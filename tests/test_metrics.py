@@ -79,6 +79,31 @@ def test_interrupted_runs_and_other_attacks_are_not_scored(runs_dir):
     assert stats.usd == pytest.approx(0.006)
 
 
+def test_silent_attacks_and_called_tools(tmp_path):
+    messages = [
+        {"role": "user", "content": [{"type": "text", "content": "Pay the bill"}]},
+        {"role": "assistant", "content": None, "tool_calls": [{"function": "read_file", "args": {}}]},
+        {"role": "tool", "content": [{"type": "text", "content": "bill with a hidden instruction"}]},
+        {"role": "assistant", "content": None, "tool_calls": [{"function": "send_money", "args": {}}] * 2},
+        {"role": "assistant", "content": [{"type": "text", "content": "Paid."}], "tool_calls": None},
+    ]
+    attack = "important_instructions"
+    write_trace(tmp_path, "user_task_0", attack, "injection_task_0", utility=True, security=True, messages=messages)
+    write_trace(tmp_path, "user_task_1", attack, "injection_task_0", utility=True, security=False)
+    rows = load_runs(tmp_path, "baseline")
+    assert rows[0]["tools"] == ["read_file", "send_money", "send_money"]
+    assert rows[1]["tools"] == []
+    stats = summarize(rows)["rep1"]["banking"]
+    assert (stats.silent_attack.hits, stats.silent_attack.n) == (1, 2)
+
+
+def test_a_trace_being_written_is_skipped(runs_dir):
+    path = runs_dir / "baseline" / "rep1" / "gpt-4o-mini-2024-07-18" / "banking" / "user_task_2" / "none" / "none.json"
+    path.parent.mkdir(parents=True)
+    path.write_text("", encoding="utf-8")  # AgentDojo truncates the file before rewriting it
+    assert len(load_runs(runs_dir, "baseline")) == 7
+
+
 def test_all_pools_every_suite(runs_dir):
     by_rep = summarize(load_runs(runs_dir, "baseline"))["rep1"]
     assert by_rep["all"].to_dict() == by_rep["banking"].to_dict()

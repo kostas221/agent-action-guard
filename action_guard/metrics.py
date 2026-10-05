@@ -72,6 +72,7 @@ class Stats:
     utility_under_attack: Rate = field(default_factory=Rate)
     attack_success: Rate = field(default_factory=Rate)  # AgentDojo convention: an API error counts as success
     attack_success_no_errors: Rate = field(default_factory=Rate)
+    silent_attack: Rate = field(default_factory=Rate)  # attack succeeded AND the user's task was done
     goal_doable: Rate = field(default_factory=Rate)
     runs: int = 0
     errors: int = 0
@@ -101,6 +102,7 @@ class Stats:
         else:
             self.utility_under_attack.add(row["utility"])
             self.attack_success.add(row["security"])
+            self.silent_attack.add(row["utility"] and row["security"])
             if row["error"] is None:
                 self.attack_success_no_errors.add(row["security"])
         if row["error"] is not None:
@@ -112,6 +114,7 @@ class Stats:
             "utility_under_attack": self.utility_under_attack.to_dict(),
             "attack_success": self.attack_success.to_dict(),
             "attack_success_no_errors": self.attack_success_no_errors.to_dict(),
+            "silent_attack": self.silent_attack.to_dict(),
             "goal_doable": self.goal_doable.to_dict(),
             "runs": self.runs,
             "errors": self.errors,
@@ -129,15 +132,28 @@ def run_kind(row: dict) -> str:
     return "attacked"
 
 
+def called_tools(trace: dict) -> list[str]:
+    """Names of the tools the agent called during the run, in order."""
+    return [
+        call["function"]
+        for message in trace.get("messages") or []
+        if message["role"] == "assistant"
+        for call in message.get("tool_calls") or []
+    ]
+
+
 def load_runs(runs_dir: Path, config: str) -> list[dict]:
     """One row per saved trace of `config`, with the repeat it belongs to; other attacks are skipped."""
     rows = []
     for path in sorted((runs_dir / config).glob("rep*/*/*/*/*/*.json")):
-        trace = json.loads(path.read_text(encoding="utf-8"))
+        try:
+            trace = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:  # AgentDojo is rewriting this trace right now (benchmark still running)
+            continue
         if trace.get("attack_type") not in (None, ATTACK):
             continue
         rep = path.relative_to(runs_dir / config).parts[0]
-        rows.append({"rep": rep, **{key: trace.get(key) for key in TRACE_KEYS}})
+        rows.append({"rep": rep, **{key: trace.get(key) for key in TRACE_KEYS}, "tools": called_tools(trace)})
     return rows
 
 
