@@ -3,6 +3,7 @@
     uv run python run_benchmark.py --suites banking           # one suite
     uv run python run_benchmark.py                            # all four suites
     uv run python run_benchmark.py --suites banking --rep 2   # a repeat, to measure run-to-run noise
+    uv run python run_benchmark.py --config guard-follow-warnings --suites banking   # with the approval guard
 
 Interrupted runs resume where they stopped: finished runs are skipped, never paid twice.
 Suites can run in parallel from separate terminals, since each one writes its own files.
@@ -21,7 +22,7 @@ from agentdojo.task_suite.load_suites import get_suite
 from dotenv import load_dotenv
 
 from action_guard.metrics import expected_runs
-from action_guard.pipelines import CONFIGS, build_pipeline
+from action_guard.pipelines import CONFIGS, GUARDED_SUITES, build_pipeline
 from action_guard.settings import ATTACK, BENCHMARK_VERSION, DEFAULT_MODEL, SUITES
 from action_guard.usage import BudgetExceeded, UsageMeter
 
@@ -54,6 +55,8 @@ def main() -> int:
     ap.add_argument("--max-usd", type=float, default=3.0, help="hard stop on spend for this invocation")
     ap.add_argument("--runs-dir", default="runs")
     args = ap.parse_args()
+    if args.config != "baseline" and set(args.suites) - set(GUARDED_SUITES):
+        ap.error(f"{args.config} has an approval policy for {', '.join(GUARDED_SUITES)} only: add --suites banking")
 
     load_dotenv(".env")
     meter = UsageMeter(args.max_usd)
