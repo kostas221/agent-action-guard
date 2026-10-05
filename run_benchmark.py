@@ -4,6 +4,7 @@
     uv run python run_benchmark.py                            # all four suites
     uv run python run_benchmark.py --suites banking --rep 2   # a repeat, to measure run-to-run noise
     uv run python run_benchmark.py --config guard-follow-warnings --suites banking   # with the approval guard
+    uv run python run_benchmark.py --config guard-oracle --suites banking --user-tasks user_task_2   # a quick trial
 
 Interrupted runs resume where they stopped: finished runs are skipped, never paid twice.
 Suites can run in parallel from separate terminals, since each one writes its own files.
@@ -52,6 +53,7 @@ def main() -> int:
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--suites", nargs="+", default=list(SUITES), choices=SUITES)
     ap.add_argument("--rep", type=int, default=1, help="repeat number; repeats measure run-to-run noise")
+    ap.add_argument("--user-tasks", nargs="+", help="only these user tasks (a quick trial); the rest can run later")
     ap.add_argument("--max-usd", type=float, default=3.0, help="hard stop on spend for this invocation")
     ap.add_argument("--runs-dir", default="runs")
     args = ap.parse_args()
@@ -72,7 +74,12 @@ def main() -> int:
             print(f"\n== {name}: {expected_runs(suite)} runs in total (already finished ones are skipped)", flush=True)
             with OutputLogger(str(logdir)):
                 benchmark_suite_without_injections(
-                    pipeline, suite, logdir=logdir, force_rerun=False, benchmark_version=BENCHMARK_VERSION
+                    pipeline,
+                    suite,
+                    logdir=logdir,
+                    force_rerun=False,
+                    user_tasks=args.user_tasks,
+                    benchmark_version=BENCHMARK_VERSION,
                 )
                 attack = load_attack(ATTACK, suite, pipeline)
                 benchmark_suite_with_injections(
@@ -81,6 +88,7 @@ def main() -> int:
                     attack,
                     logdir=logdir,
                     force_rerun=False,
+                    user_tasks=args.user_tasks,
                     verbose=False,
                     benchmark_version=BENCHMARK_VERSION,
                 )

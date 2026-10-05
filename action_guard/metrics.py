@@ -28,6 +28,7 @@ TRACE_KEYS = (
     "error",
     "duration",
     "usage",
+    "guard",  # approval requests and decisions, in guarded configurations only
 )
 
 

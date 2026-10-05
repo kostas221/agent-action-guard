@@ -114,6 +114,15 @@ def test_in_a_full_pipeline_the_attackers_payment_is_stopped_and_the_read_runs(e
     assert record["warnings"] == ["The recipient is not in your message and you have never paid them."]
 
 
+def test_after_an_approved_payment_to_the_attacker_the_next_one_still_warns(env):
+    # the bug found in the approve-all run: the first approved payment made the attacker "known"
+    calls = [FunctionCall(function="send_money", args=dict(PAY_ATTACKER), id=str(i)) for i in (1, 2)]
+    guard = Guard(BankingPolicy(), ApproveAll())
+    guarded_pipeline(ScriptedAgent(calls), guard, name="scripted").query(QUERY, FunctionsRuntime(SUITE.tools), env)
+    assert [record["status"] for record in guard.records()] == ["executed", "executed"]
+    assert all(record["warnings"] for record in guard.records())
+
+
 def test_every_task_starts_with_a_fresh_gate():
     guard = Guard(BankingPolicy(), RejectAll())
     agent = ScriptedAgent([FunctionCall(function="send_money", args=dict(PAY_ATTACKER), id="1")])

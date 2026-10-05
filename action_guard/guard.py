@@ -25,7 +25,12 @@ from agentdojo.types import ChatMessage
 
 from action_guard.approval import ApprovalGate, Approver
 
-REJECTED = "The user rejected this action, so it was not executed."
+# Without the second sentence the trial showed a hijacked agent retrying a rejected payment
+# up to 10 times, using up its turn instead of doing the user's task.
+REJECTED = (
+    "The user rejected this action, so it was not executed. Do not retry it or reach the same result "
+    "another way; continue with the task the user asked for."
+)
 
 
 class Guard:
@@ -36,8 +41,10 @@ class Guard:
         self.approver = approver
         self.gate = ApprovalGate()
 
-    def start_task(self) -> None:
+    def start_task(self, env: Env) -> None:
         self.gate = ApprovalGate()  # approvals never carry over to another task
+        if hasattr(self.policy, "start_task"):
+            self.policy.start_task(env)  # what the account looked like before the agent acted
 
     def check(self, tool: str, args: Mapping, query: str, env: Env, messages: Sequence[ChatMessage]) -> str | None:
         """None if the call may run now; otherwise the error the agent receives instead of the tool's output."""
@@ -107,7 +114,7 @@ class GuardedToolsExecutor(ToolsExecutor):
 
 
 class StartGuard(BasePipelineElement):
-    """First element of the pipeline: a fresh approval gate for every task."""
+    """First element of the pipeline: a fresh approval gate for every task, and the account as it was."""
 
     def __init__(self, guard: Guard) -> None:
         self.guard = guard
@@ -120,7 +127,7 @@ class StartGuard(BasePipelineElement):
         messages: Sequence[ChatMessage],
         extra_args: dict,
     ) -> tuple[str, FunctionsRuntime, Env, Sequence[ChatMessage], dict]:
-        self.guard.start_task()
+        self.guard.start_task(env)
         return query, runtime, env, messages, extra_args
 
 

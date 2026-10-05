@@ -12,11 +12,11 @@ from agentdojo.agent_pipeline.agent_pipeline import AgentPipeline, PipelineConfi
 from agentdojo.agent_pipeline.llms.openai_llm import OpenAILLM
 
 from action_guard.approval import ApproveAll, Approver, FollowWarnings, RejectAll
-from action_guard.banking import BankingPolicy
+from action_guard.banking import BankingOracle, BankingPolicy
 from action_guard.guard import Guard, guarded_pipeline
 from action_guard.usage import PRICES, UsageMeter
 
-APPROVERS = {approver.name: approver for approver in (ApproveAll, RejectAll, FollowWarnings)}
+APPROVERS = {approver.name: approver for approver in (ApproveAll, RejectAll, FollowWarnings, BankingOracle)}
 CONFIGS = ("baseline", *(f"guard-{name}" for name in APPROVERS))
 GUARDED_SUITES = ("banking",)
 

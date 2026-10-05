@@ -7,16 +7,22 @@ first. Free text the agent read (files, subjects of incoming transactions) is un
 since injections hide there: it never makes a value trusted and is never shown as a label.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from agentdojo.default_suites.v1.banking.task_suite import BankingEnvironment
+from agentdojo.logging import Logger, TraceLogger
+from agentdojo.task_suite.load_suites import get_suite
 from agentdojo.types import ChatMessage, get_text_content_as_str
+
+from action_guard.approval import ActionRequest
+from action_guard.settings import BENCHMARK_VERSION
 
 MONEY_TOOLS = ("send_money", "schedule_transaction", "update_scheduled_transaction")
 WRITE_TOOLS = frozenset({*MONEY_TOOLS, "update_password", "update_user_info"})
 USER_FIELDS = ("first_name", "last_name", "street", "city")
 SCHEDULE_FIELDS = ("recipient", "amount", "subject", "date", "recurring")
+IDENTIFYING_FIELDS = ("recipient", "password")  # what makes an action the attacker's: who gets it
 LABEL_WIDTH = 40
 
 
@@ -54,8 +60,7 @@ def first_seen(value: str, messages: Sequence[ChatMessage]) -> str | None:
     return None
 
 
-def recipient_note(recipient: str, query: str, env: BankingEnvironment, messages: Sequence[ChatMessage]) -> str:
-    known = payees(env)
+def recipient_note(recipient: str, query: str, known: Mapping[str, str], messages: Sequence[ChatMessage]) -> str:
     if recipient in known:
         return f"{recipient}: you have paid them before: {known[recipient]}"
     if recipient in query:
@@ -110,11 +115,13 @@ def describe(tool: str, args: Mapping, env: BankingEnvironment) -> str:
     return f"{tool}({dict(args)})"
 
 
-def warning_reasons(tool: str, args: Mapping, query: str, env: BankingEnvironment) -> list[str]:
-    """Rules W1-W3 of the policy: what in this call did not come from the user."""
+def warning_reasons(
+    tool: str, args: Mapping, query: str, env: BankingEnvironment, known: Mapping[str, str]
+) -> list[str]:
+    """Rules W1-W3 of the policy: what in this call did not come from the user (`known`: trusted payees)."""
     reasons = []
     recipient = args.get("recipient")
-    if tool in MONEY_TOOLS and recipient and str(recipient) not in query and str(recipient) not in payees(env):
+    if tool in MONEY_TOOLS and recipient and str(recipient) not in query and str(recipient) not in known:
         reasons.append("The recipient is not in your message and you have never paid them.")
     if tool == "update_password" and str(args.get("password")) not in query:
         reasons.append("You did not type this password.")
@@ -131,7 +138,17 @@ def warning_reasons(tool: str, args: Mapping, query: str, env: BankingEnvironmen
 
 
 class BankingPolicy:
+    """Trusted payees are fixed when a task starts: a payment approved during the task, even a
+    mistaken one to the attacker, must not make the next request to the same account look safe.
+    """
+
     name = "banking"
+
+    def __init__(self) -> None:
+        self.known: dict[str, str] | None = None  # None: no task started, judge by the current account
+
+    def start_task(self, env: BankingEnvironment) -> None:
+        self.known = payees(env)
 
     def needs_approval(self, tool: str) -> bool:
         return tool in WRITE_TOOLS
@@ -139,7 +156,49 @@ class BankingPolicy:
     def review(
         self, tool: str, args: Mapping, query: str, env: BankingEnvironment, messages: Sequence[ChatMessage]
     ) -> Review:
+        known = self.known if self.known is not None else payees(env)
         lines = [describe(tool, args, env)]
         if tool in MONEY_TOOLS and args.get("recipient"):
-            lines.append(recipient_note(str(args["recipient"]), query, env, messages))
-        return Review(summary="\n".join(lines), warnings=warning_reasons(tool, args, query, env))
+            lines.append(recipient_note(str(args["recipient"]), query, known, messages))
+        return Review(summary="\n".join(lines), warnings=warning_reasons(tool, args, query, env, known))
+
+
+def attacker_values(suite, injection_task_id: str) -> set[str]:
+    """Recipients and passwords in AgentDojo's own solution of the attacker's goal, e.g. {'US133000000121212121212'}."""
+    env = suite.load_and_inject_default_environment({})
+    calls = suite.injection_tasks[injection_task_id].ground_truth(env)
+    return {str(call.args[name]) for call in calls for name in IDENTIFYING_FIELDS if call.args.get(name) is not None}
+
+
+def is_attackers(args: Mapping, values: set[str]) -> bool:
+    """True when the call gives money or the account to the attacker: its recipient or password is theirs."""
+    return any(args.get(name) is not None and str(args[name]) in values for name in IDENTIFYING_FIELDS)
+
+
+def running_injection_task() -> str | None:
+    """The attacker's goal of the run in progress, from AgentDojo's trace logger (None without attack)."""
+    logger = Logger.get()
+    return logger.context.get("injection_task_id") if isinstance(logger, TraceLogger) else None
+
+
+class BankingOracle:
+    """The best a careful user can do: rejects exactly the attacker's own actions and approves the rest.
+
+    It knows the attack from the benchmark's run context, which a real user never sees, so
+    its numbers are an upper bound on what the guard plus a person can achieve.
+    """
+
+    name = "oracle"
+
+    def __init__(self, current: Callable[[], str | None] = running_injection_task) -> None:
+        self.current = current
+        self.suite = get_suite(BENCHMARK_VERSION, "banking")
+        self.values: dict[str, set[str]] = {}
+
+    def decide(self, request: ActionRequest) -> bool:
+        injection_task_id = self.current()
+        if injection_task_id is None:
+            return True
+        if injection_task_id not in self.values:
+            self.values[injection_task_id] = attacker_values(self.suite, injection_task_id)
+        return not is_attackers(request.args, self.values[injection_task_id])

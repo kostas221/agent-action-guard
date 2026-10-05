@@ -77,11 +77,14 @@ Agent mistake, no attack: user_task_15 "... refund that 10.00 I just got from my
 
 ## 3. Warning rules
 
-Trusted sources: **the user's message**, and **the user's own payments** (the recipients
-of past payments the user made and of scheduled payments). Someone who only sent the user
-money is not trusted, or an attacker could become "known" by sending one cent first.
-Everything else is untrusted: file contents, subjects of incoming transactions, any free
-text the agent read, because that is where injections hide.
+Trusted sources: **the user's message**, and **the user's own payments as they were when
+the task started** (the recipients of past payments the user made and of scheduled
+payments). Someone who only sent the user money is not trusted, or an attacker could
+become "known" by sending one cent first. A payment made during the task does not count
+either: in the evaluation, once a user approved one payment to the attacker, every later
+request to the same account arrived without a warning. Everything else is untrusted: file
+contents, subjects of incoming transactions, any free text the agent read, because that is
+where injections hide.
 
 | Rule | Fires when |
 |---|---|
@@ -98,8 +101,11 @@ W1 or W2, so they would only add false alarms) and subject checks for known reci
 - An approval covers one exact call: tool name plus canonical arguments.
 - Any change to an argument after approval needs a new approval.
 - One approval allows one execution; replaying it is refused.
-- On rejection the tool is not executed; the agent receives
-  "The user rejected this action." and may continue.
+- On rejection the tool is not executed; the agent receives "The user rejected this
+  action, so it was not executed. Do not retry it or reach the same result another way;
+  continue with the task the user asked for." The second sentence was added after a trial
+  run in which a hijacked agent retried a rejected payment 10 times and never did the
+  user's task.
 - No write tool can run without passing the guard (tests try to bypass it).
 
 ## 5. Evaluation without a real user
