@@ -75,7 +75,10 @@ class Verdict:
 
 
 def judge_prompt(query: str, tool: str, args: Mapping, summary: str, facts: Sequence[str]) -> str:
-    call = json.dumps(dict(args), ensure_ascii=False, sort_keys=True)
+    # None means "leave unchanged": 0.1.1 validation fills these defaults in, the pilots that tested this
+    # prompt never saw them, and the judge read "recipient": null as "no recipient given"
+    given = {name: value for name, value in args.items() if value is not None}
+    call = json.dumps(given, ensure_ascii=False, sort_keys=True)
 
     def listed(rows: list[str]) -> str:
         return "\n".join(f"- {row}" for row in rows) or "- (none)"

@@ -95,7 +95,10 @@ def saved_requests(runs_dir: Path, config: str, suite) -> list[dict]:
 
 def select(items: list[dict], how: str, sample: int, seed: int) -> list[dict]:
     """pilot: all requests without attack, all of the tasks where rules over-warn, a fixed random sample of the rest.
-    warned: every request the rules warned on, i.e. every request the hybrid asks the judge about."""
+    warned: every request the rules warned on, i.e. every request the hybrid asks the judge about.
+    all: every request, i.e. every request the judge alone is asked about."""
+    if how == "all":
+        return items
     if how == "warned":
         return [i for i in items if i["rules_warned"]]
     chosen = [i for i in items if i["kind"] == "clean" or i["user_task"] in ALWAYS_TASKS]
@@ -162,7 +165,9 @@ def main() -> int:
     ap.add_argument("--config", default="guard-follow-warnings", help="saved runs to replay")
     ap.add_argument("--runs-dir", default="runs")
     ap.add_argument("--model", default=DEFAULT_MODEL)
-    ap.add_argument("--select", default="pilot", choices=("pilot", "warned"), help="which saved requests (see select)")
+    ap.add_argument(
+        "--select", default="pilot", choices=("pilot", "warned", "all"), help="which saved requests (see select)"
+    )
     ap.add_argument("--sample", type=int, default=150, help="pilot: random attacked requests added to the fixed ones")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--votes", type=int, default=1, choices=(1, 3), help="3: majority of up to three judge calls")
