@@ -12,8 +12,10 @@ wheels/
 # Secrets and raw traces
 .env
 runs/
+runs-v*/
 .pytest_cache/
 .ruff_cache/
 
 # Local notes for the coding assistant, kept out of the public repo
 CLAUDE.md
+AGENTS.md

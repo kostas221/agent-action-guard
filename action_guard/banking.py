@@ -7,10 +7,14 @@ first. Free text the agent read (files, subjects of incoming transactions) is un
 since injections hide there: it never makes a value trusted and is never shown as a label.
 """
 
+from __future__ import annotations
+
+import json
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from agentdojo.default_suites.v1.banking.task_suite import BankingEnvironment
 from agentdojo.logging import Logger, TraceLogger
 from agentdojo.task_suite.load_suites import get_suite
 from agentdojo.types import ChatMessage, get_text_content_as_str
@@ -18,18 +22,48 @@ from agentdojo.types import ChatMessage, get_text_content_as_str
 from action_guard.approval import ActionRequest
 from action_guard.settings import BENCHMARK_VERSION
 
+if TYPE_CHECKING:  # importing it first at runtime trips a circular import inside AgentDojo
+    from agentdojo.default_suites.v1.banking.task_suite import BankingEnvironment
+
 MONEY_TOOLS = ("send_money", "schedule_transaction", "update_scheduled_transaction")
 WRITE_TOOLS = frozenset({*MONEY_TOOLS, "update_password", "update_user_info"})
 USER_FIELDS = ("first_name", "last_name", "street", "city")
 SCHEDULE_FIELDS = ("recipient", "amount", "subject", "date", "recurring")
 IDENTIFYING_FIELDS = ("recipient", "password")  # what makes an action the attacker's: who gets it
 LABEL_WIDTH = 40
+FACT_WIDTH = 200  # longer argument values (an exfiltrated history in a subject) are cut for the judge
+QUOTED_VALUE = re.compile(r"""(?<!\w)(['"])(.*?)\1""", re.DOTALL)
+# A full stop or comma after an unquoted password usually ends the sentence; "!" and "?"
+# are common inside passwords, so they stay part of the token.
+SENTENCE_MARKS = ".,"
 
 
 @dataclass
 class Review:
     summary: str  # what the user is shown
     warnings: list[str] = field(default_factory=list)
+    details: dict = field(default_factory=dict)  # saved with the request: rule warnings, judge verdict
+
+
+def user_supplied(value: object, query: str, *, password: bool = False) -> bool:
+    """Literal presence, not authorization: quoted values must match in full.
+
+    A password outside quotes must be a complete whitespace-delimited token,
+    including punctuation, or that token without one trailing full stop or comma
+    ("... to abc123." supplies abc123; it never supplies part of a token).
+    Other values may be phrases, with whole-word boundaries.
+    Quoted spans are removed before checking unquoted text, so a substring of a
+    quoted password/address/recipient cannot be mistaken for the supplied value.
+    """
+    if not isinstance(value, str) or not value.strip():
+        return False
+    if any(value == match.group(2) for match in QUOTED_VALUE.finditer(query)):
+        return True
+    unquoted = QUOTED_VALUE.sub(" ", query)
+    if password:
+        tokens = unquoted.split()
+        return value in tokens or any(t[-1] in SENTENCE_MARKS and t[:-1] == value for t in tokens)
+    return re.search(r"(?<!\w)" + re.escape(value) + r"(?!\w)", unquoted) is not None
 
 
 def money(value) -> str:
@@ -51,19 +85,87 @@ def payees(env: BankingEnvironment) -> dict[str, str]:
     return known
 
 
+def call_text(call) -> str:
+    """read_file('bill-december-2023.txt'), from a live FunctionCall or one loaded from a saved trace."""
+    function, args = (call["function"], call["args"]) if isinstance(call, Mapping) else (call.function, call.args)
+    return f"{function}({', '.join(repr(v) for v in args.values())})"
+
+
 def first_seen(value: str, messages: Sequence[ChatMessage]) -> str | None:
     """The tool call whose output first contained `value`, e.g. read_file('bill-december-2023.txt')."""
     for message in messages:
         if message["role"] == "tool" and value in get_text_content_as_str(message["content"] or []):
-            call = message["tool_call"]
-            return f"{call.function}({', '.join(repr(v) for v in call.args.values())})"
+            return call_text(message["tool_call"])
     return None
+
+
+def value_forms(value) -> list[str]:
+    """How a value can be written in text: 98.7 also as 98.70, 1000.0 also as 1000; booleans have no source."""
+    if value is None or isinstance(value, bool):
+        return []
+    if isinstance(value, int | float):
+        forms = {str(value), str(float(value)), f"{float(value):.2f}"}
+        if float(value).is_integer():
+            forms.add(str(int(value)))
+        return sorted(forms)
+    text = str(value).strip()
+    return [text] if text else []
+
+
+def appears_in(form: str, text: str) -> bool:
+    """Whole-value occurrence: 50 is not found inside 1500, 2022-01-50, 50.5 or 50x; hyphens join words."""
+    return re.search(r"(?<![\w.-])" + re.escape(form) + r"(?![\w-]|\.\d)", text) is not None
+
+
+def source_call(value, messages: Sequence[ChatMessage]):
+    """The first tool call whose output contains the whole value, in any of its written forms."""
+    forms = value_forms(value)
+    for message in messages:
+        if message["role"] == "tool":
+            text = get_text_content_as_str(message["content"] or [])
+            if any(appears_in(form, text) for form in forms):
+                return message["tool_call"]
+    return None
+
+
+def source_of(value, messages: Sequence[ChatMessage]) -> str | None:
+    call = source_call(value, messages)
+    return call_text(call) if call is not None else None
+
+
+def named_in(call, query: str) -> bool:
+    """Whether the user's request names the source, e.g. the file in read_file('address-change.txt')."""
+    args = call["args"] if isinstance(call, Mapping) else call.args
+    return any(isinstance(arg, str) and user_supplied(arg, query) for arg in args.values())
+
+
+def argument_facts(
+    tool: str, args: Mapping, query: str, known: Mapping[str, str], messages: Sequence[ChatMessage]
+) -> list[str]:
+    """Where each argument's value came from, computed by code (for the judge, which never reads tool outputs)."""
+    facts = []
+    for name, value in args.items():
+        forms = value_forms(value)
+        if not forms:
+            continue
+        shown = json.dumps(value if len(str(value)) <= FACT_WIDTH else f"{str(value)[:FACT_WIDTH]}...")
+        if any(user_supplied(form, query, password=name == "password") for form in forms):
+            where = "in the user's request"
+        elif name == "recipient" and str(value) in known:
+            where = f"an account the user had paid before the task: {known[str(value)]}"
+        elif (call := source_call(value, messages)) is not None:
+            named = ", a source the user's request names" if named_in(call, query) else ""
+            where = f"not in the user's request; first appeared in the output of {call_text(call)}{named}"
+        else:
+            where = "neither in the user's request nor in any tool output (made up or computed)"
+        facts.append(f"{name} = {shown}: {where}")
+    return facts
 
 
 def recipient_note(recipient: str, query: str, known: Mapping[str, str], messages: Sequence[ChatMessage]) -> str:
     if recipient in known:
         return f"{recipient}: you have paid them before: {known[recipient]}"
-    if recipient in query:
+    if user_supplied(recipient, query):
         return f"{recipient}: from your message"
     seen = first_seen(recipient, messages)
     if seen:
@@ -121,16 +223,16 @@ def warning_reasons(
     """Rules W1-W3 of the policy: what in this call did not come from the user (`known`: trusted payees)."""
     reasons = []
     recipient = args.get("recipient")
-    if tool in MONEY_TOOLS and recipient and str(recipient) not in query and str(recipient) not in known:
+    if tool in MONEY_TOOLS and recipient is not None and not user_supplied(recipient, query) and recipient not in known:
         reasons.append("The recipient is not in your message and you have never paid them.")
-    if tool == "update_password" and str(args.get("password")) not in query:
+    if tool == "update_password" and not user_supplied(args.get("password"), query, password=True):
         reasons.append("You did not type this password.")
     if tool == "update_user_info":
         user = env.user_account
         untyped = [
             name.replace("_", " ")
             for name in USER_FIELDS
-            if args.get(name) and args[name] != getattr(user, name) and str(args[name]) not in query
+            if args.get(name) and args[name] != getattr(user, name) and not user_supplied(args[name], query)
         ]
         if untyped:
             reasons.append(f"You did not type the new {', '.join(untyped)}.")
@@ -163,6 +265,43 @@ class BankingPolicy:
         return Review(summary="\n".join(lines), warnings=warning_reasons(tool, args, query, env, known))
 
 
+class JudgedBankingPolicy(BankingPolicy):
+    """The banking policy with the warning from a model judge (docs/judge-design.md).
+
+    Approvals and what the user sees are unchanged; only the warning differs:
+    "judge"  the judge decides on every approval request;
+    "hybrid" the rules decide, the judge is asked only about rule-warned requests and may
+             clear the warning, so it can remove warnings but never miss one the rules give.
+    """
+
+    MODES = ("judge", "hybrid")
+
+    def __init__(self, judge, mode: str) -> None:
+        if mode not in self.MODES:
+            raise ValueError(f"mode must be one of {self.MODES}")
+        super().__init__()
+        self.judge = judge
+        self.mode = mode
+        self.name = f"banking-{mode}"
+
+    def review(
+        self, tool: str, args: Mapping, query: str, env: BankingEnvironment, messages: Sequence[ChatMessage]
+    ) -> Review:
+        rules = super().review(tool, args, query, env, messages)
+        details = {"warning_source": self.mode, "rule_warnings": rules.warnings, "judge": None}
+        if self.mode == "hybrid" and not rules.warnings:
+            return Review(rules.summary, [], details)
+        known = self.known if self.known is not None else payees(env)
+        facts = argument_facts(tool, args, query, known, messages)
+        verdict = self.judge.assess(query, tool, args, describe(tool, args, env), facts)
+        details["judge"] = verdict.to_dict()
+        if not verdict.warn:
+            return Review(rules.summary, [], details)
+        judged = f"Safety check: {verdict.reason}"
+        warnings = [judged] if self.mode == "judge" else [*rules.warnings, judged]
+        return Review(rules.summary, warnings, details)
+
+
 def attacker_values(suite, injection_task_id: str) -> set[str]:
     """Recipients and passwords in AgentDojo's own solution of the attacker's goal, e.g. {'US133000000121212121212'}."""
     env = suite.load_and_inject_default_environment({})
@@ -182,10 +321,10 @@ def running_injection_task() -> str | None:
 
 
 class BankingOracle:
-    """The best a careful user can do: rejects exactly the attacker's own actions and approves the rest.
+    """An attack-aware simulation: rejects exact matches to the benchmark's attacker values.
 
-    It knows the attack from the benchmark's run context, which a real user never sees, so
-    its numbers are an upper bound on what the guard plus a person can achieve.
+    It uses privileged run context unavailable to real users. Other mistakes can still
+    be approved, so this is not a perfect user or a mathematical bound on utility.
     """
 
     name = "oracle"

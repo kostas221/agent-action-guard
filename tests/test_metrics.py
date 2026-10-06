@@ -3,7 +3,7 @@ import math
 
 import pytest
 
-from action_guard.metrics import load_runs, summarize, wilson
+from action_guard.metrics import load_runs, summarize, tasks_needing_a_change, wilson
 
 
 def test_wilson_matches_known_values():
@@ -107,3 +107,11 @@ def test_a_trace_being_written_is_skipped(runs_dir):
 def test_all_pools_every_suite(runs_dir):
     by_rep = summarize(load_runs(runs_dir, "baseline"))["rep1"]
     assert by_rep["all"].to_dict() == by_rep["banking"].to_dict()
+
+
+def test_banking_tasks_that_pass_with_the_account_untouched_are_left_out():
+    from agentdojo.task_suite.load_suites import get_suite
+
+    needed = tasks_needing_a_change(get_suite("v1.2.2", "banking"))
+    # out: questions (1, 7, 8), checks that always pass (5, 6), underspecified tasks where doing nothing wins (9, 10)
+    assert needed == [f"user_task_{n}" for n in (0, 2, 3, 4, 11, 12, 13, 14, 15)]

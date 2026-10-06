@@ -25,12 +25,14 @@ class Status(Enum):
     PENDING = "pending"
     APPROVED = "approved"
     REJECTED = "rejected"
+    CONSUMED = "consumed"  # approval used; execution has not returned yet
     EXECUTED = "executed"
+    FAILED = "failed"
 
 
 def fingerprint(tool: str, args: Mapping) -> str:
     """Identifies one exact call: any change to the tool or to any argument changes it; argument order does not."""
-    canonical = json.dumps({"tool": tool, "args": args}, sort_keys=True, default=str)
+    canonical = json.dumps({"tool": tool, "args": dict(args)}, sort_keys=True, allow_nan=False)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
@@ -43,13 +45,22 @@ class ActionRequest:
     summary: str = ""  # what the user is shown
     warnings: list[str] = field(default_factory=list)
     status: Status = Status.PENDING
+    error: str | None = None
+    details: dict = field(default_factory=dict)  # how the warning was reached (rules, judge verdict)
 
 
 class ApprovalGate:
     def __init__(self) -> None:
         self.requests: list[ActionRequest] = []
 
-    def request(self, tool: str, args: Mapping, summary: str = "", warnings: list[str] | None = None) -> ActionRequest:
+    def request(
+        self,
+        tool: str,
+        args: Mapping,
+        summary: str = "",
+        warnings: list[str] | None = None,
+        details: Mapping | None = None,
+    ) -> ActionRequest:
         """Register a call that waits for a decision."""
         args = copy.deepcopy(dict(args))
         request = ActionRequest(
@@ -59,6 +70,7 @@ class ApprovalGate:
             fingerprint=fingerprint(tool, args),
             summary=summary,
             warnings=list(warnings or []),
+            details=copy.deepcopy(dict(details or {})),
         )
         self.requests.append(request)
         return request
@@ -71,13 +83,21 @@ class ApprovalGate:
         request.status = Status.APPROVED if approve else Status.REJECTED
 
     def consume(self, tool: str, args: Mapping) -> ActionRequest | None:
-        """The approved, unused request for exactly this call, now marked executed; None means: do not execute."""
+        """Consume an approval once, before execution. Its eventual outcome is recorded by finish()."""
         wanted = fingerprint(tool, args)
         for request in self.requests:
             if request.status is Status.APPROVED and request.fingerprint == wanted:
-                request.status = Status.EXECUTED
+                request.status = Status.CONSUMED
                 return request
         return None
+
+    def finish(self, request_id: int, error: str | None = None) -> None:
+        """Record a consumed approval's outcome; failure never makes the approval reusable."""
+        request = self.requests[request_id - 1]
+        if request.status is not Status.CONSUMED:
+            raise ValueError(f"Request {request_id} is not awaiting an execution result")
+        request.error = error
+        request.status = Status.EXECUTED if error is None else Status.FAILED
 
 
 class Approver(Protocol):
@@ -132,6 +152,8 @@ class ConsoleApprover:
         for warning in request.warnings:
             self.show(f"  [!] WARNING: {warning}")
         self.show(request.summary)
+        arguments = json.dumps(request.args, sort_keys=True, ensure_ascii=True, allow_nan=False)
+        self.show(f"Exact call: {request.tool}({arguments})")
         if request.warnings:
             approved = self.ask("Type 'approve' to approve anyway, or Enter to reject: ").strip().lower() == "approve"
         else:

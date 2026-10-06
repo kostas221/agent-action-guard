@@ -41,7 +41,7 @@ def test_an_approved_request_runs_once():
     gate = ApprovalGate()
     request = approved(gate)
     assert gate.consume("send_money", PAYMENT) is request
-    assert request.status is Status.EXECUTED
+    assert request.status is Status.CONSUMED
     assert gate.consume("send_money", PAYMENT) is None  # replaying the same approval
 
 
@@ -121,3 +121,40 @@ def test_simulated_users():
     assert [ApproveAll().decide(plain), ApproveAll().decide(flagged)] == [True, True]
     assert [RejectAll().decide(plain), RejectAll().decide(flagged)] == [False, False]
     assert [FollowWarnings().decide(plain), FollowWarnings().decide(flagged)] == [True, False]
+
+
+@pytest.mark.parametrize("error", [None, "ValueError: tool failed"])
+def test_consumed_approvals_record_an_outcome_without_becoming_reusable(error):
+    gate = ApprovalGate()
+    request = approved(gate)
+    gate.consume("send_money", PAYMENT)
+    gate.finish(request.id, error)
+    assert request.status is (Status.EXECUTED if error is None else Status.FAILED)
+    assert request.error == error
+    assert gate.consume("send_money", PAYMENT) is None
+    with pytest.raises(ValueError):
+        gate.finish(request.id)
+
+
+def test_an_unconsumed_approval_cannot_be_reported_as_executed():
+    gate = ApprovalGate()
+    request = approved(gate)
+    with pytest.raises(ValueError):
+        gate.finish(request.id)
+    assert request.status is Status.APPROVED
+
+
+@pytest.mark.parametrize("value", [object(), float("nan"), float("inf")])
+def test_fingerprints_reject_values_that_cannot_be_bound_as_finite_json(value):
+    with pytest.raises((TypeError, ValueError)):
+        fingerprint("send_money", {"amount": value})
+
+
+def test_console_shows_the_exact_arguments_even_when_the_summary_rounds_them():
+    shown = []
+    request = ApprovalGate().request("send_money", {**PAYMENT, "amount": 10.004}, summary="Send 10.00")
+    assert console("y", shown).decide(request)
+    exact = next(line for line in shown if line.startswith("Exact call: "))
+    assert '"amount": 10.004' in exact
+    assert PAYMENT["recipient"] in exact
+    assert "send_money(" in exact

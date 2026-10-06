@@ -4,6 +4,7 @@ and you approve or reject every action that would change the account.
     uv run python demo.py                                  # adjust the rent; the landlord's notice hides an attack
     uv run python demo.py --injection-task none            # the same task without attack
     uv run python demo.py --user-task user_task_13         # change address from a file (the legit action warns too)
+    uv run python demo.py --user-task user_task_13 --warnings hybrid   # the rules warn, a model judge may clear it
 
 The default pair is one where the undefended agent did both the task and the attack in all
 3 baseline repeats. Approve the rent change, reject the warned payment, and the task is
@@ -25,7 +26,7 @@ from agentdojo.types import ChatMessage, get_text_content_as_str
 from dotenv import load_dotenv
 
 from action_guard.approval import ConsoleApprover
-from action_guard.pipelines import guarded_agent
+from action_guard.pipelines import guarded_agent, judged_policy
 from action_guard.settings import ATTACK, BENCHMARK_VERSION, DEFAULT_MODEL
 from action_guard.usage import UsageMeter
 
@@ -66,6 +67,7 @@ def main() -> int:
     ap.add_argument("--user-task", default="user_task_2")
     ap.add_argument("--injection-task", default="injection_task_0", help="'none' for no attack")
     ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--warnings", default="rules", choices=("rules", "judge", "hybrid"), help="who warns")
     args = ap.parse_args()
 
     load_dotenv(".env")
@@ -73,7 +75,8 @@ def main() -> int:
     user_task = suite.user_tasks[args.user_task]
     injection_task = None if args.injection_task == "none" else suite.injection_tasks[args.injection_task]
     meter = UsageMeter(max_usd=0.05)
-    pipeline = guarded_agent(args.model, meter, ConsoleApprover())
+    policy = None if args.warnings == "rules" else judged_policy(args.warnings, meter)
+    pipeline = guarded_agent(args.model, meter, ConsoleApprover(), policy)
     keep = KeepMessages()
     pipeline.elements = [*pipeline.elements, keep]
 

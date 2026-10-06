@@ -5,11 +5,17 @@ the user's yes or no, the approval covers that exact action once, and a warning 
 a recipient, password or address did not come from the user. Evaluated against prompt
 injection on [AgentDojo](https://github.com/ethz-spylab/agentdojo).
 
-**Result on AgentDojo's banking suite (gpt-4o-mini, 3 repeats):** without the guard, 49.8%
-of hidden attacks succeed. With the guard and a user who rejects the attacker's requests,
-**0 of 1,296 attacked runs succeeded**, every one of the attacker's 1,325 requests carried
-a warning, and with a user who decides correctly the agent completes as many tasks as
-without the guard.
+**Released 0.1 results on AgentDojo's banking suite (gpt-4o-mini, 3 repeats):**
+attack success was 49.8% without the guard and **0/432** when a simulated user rejected
+every warned action. All 395 attacker requests in that configuration carried a warning.
+Clean-task utility fell from 52.1% to 39.6%; an attack-aware oracle had utility close to
+the baseline. These results cover one attack template, not arbitrary prompt injections.
+
+The tables below describe release commit `c8fed2b` (0.1.0). Version 0.1.1 fixes resolve and
+validate arguments before approval, tighten literal matching, and distinguish consumed
+approvals from successful or failed executions. They have offline regression tests;
+the paid benchmark has not been rerun for these changes. See
+[the policy](docs/approval-policy.md#4-binding-rules-contract-for-step-2).
 
 ## The problem
 
@@ -46,18 +52,20 @@ flowchart LR
 - **Mandatory approval.** In banking, the 5 tools that change something (send or schedule
   money, change a scheduled payment, the password or the account details) never run without
   a yes. Reads run freely.
-- **Bound to the exact call, used once.** The approval is tied to a fingerprint of the tool
-  and every argument: approve 10.00 and a call for 1000.00 is refused; one approval allows
-  one execution.
-- **No way around it.** AgentDojo runs every tool, including calls nested in another call's
-  arguments, through one method; the guard overrides that method.
+- **Bound to the exact call, used once.** Nested calls are resolved through the guard
+  and arguments are validated before approval. The terminal shows the exact call alongside
+  the readable summary. One approval allows one execution attempt, even if the tool fails.
+- **One guarded execution path.** Within the AgentDojo runtime, nested tool calls also
+  pass through the guard. This is an in-process prototype, not isolation from arbitrary
+  Python code with direct access to the environment.
 - **Warnings by provenance, not by content.** A request is warned when the recipient is not
   in the user's message and not someone the user had paid before the task started, or when
-  a password or new address was not typed by the user. The rules look only at where a value
-  came from, never at what the surrounding text says, so the attacker's words cannot talk
-  them out of a warning.
+  a password or new address has no matching literal in the user's message. Passwords
+  must match a complete quoted value or an unquoted whitespace-delimited token (a single
+  trailing full stop or comma counts as punctuation); empty values never count as supplied. These are literal source checks, not full data-flow
+  tracking or an understanding of the user's intent.
 
-What the user sees (a real request from the demo):
+A real approval request from the release 0.1 demo (the current demo also shows the exact JSON arguments):
 
 ```
 === Approval needed (request 1) ===
@@ -71,9 +79,9 @@ The full design, with the rules and their trade-offs: [docs/approval-policy.md](
 
 ## Results
 
-No person answers in a benchmark, so simulated users decide. They bound what a real user
-would get; they are not predictions of how people behave. The oracle knows the attack from
-the benchmark, so it is the best case.
+No person answers in a benchmark, so simulated users decide. They are scenarios, not
+mathematical bounds or predictions of human behavior. The oracle uses privileged knowledge
+of the benchmark's attacker values; it can still approve other mistakes.
 
 | Banking, 3 repeats pooled | Attack success | Utility, no attack | Utility under attack | Approvals per task |
 |---|---|---|---|---|
@@ -83,13 +91,14 @@ the benchmark, so it is the best case.
 | guard, user rejects only the attacker (oracle) | **0.0%** [0-1] | 54.2% [40-67] | 47.2% [43-52] | 0.79 |
 | guard, user rejects everything | **0.0%** [0-1] | 37.5% [25-52] | 38.0% [34-43] | 0.98 |
 
-95% Wilson intervals. Attack success of the baseline moved by 2.8 points across repeats.
+95% Wilson intervals describe pooled runs on repeated benchmark cases, not a guarantee
+for unseen attacks. The observed baseline spread was 2.8 percentage points; this is not
+a statistical-significance threshold.
 
-- **The guarantee holds:** nothing the attacker asked for ran without a yes, in any run.
-- **The mechanism costs nothing; wrong decisions do.** With the oracle, utility matches the
-  baseline. A user who blindly rejects every warning loses exactly the two tasks whose values
-  legitimately come from a file (a bill to pay, a new address).
-- **Approval alone protects nothing.** A user who approves everything gets the baseline.
+- **No unapproved attacker write was observed** in these saved runs.
+- **Oracle utility was close to the baseline.** This does not establish equivalence or zero
+  utility cost. Following every warning rejected the legitimate file-sourced bill and address.
+- **Approving every request left attacks effective:** 67/144 succeeded in the control run.
 
 **The guard makes sure nothing happens without the user's consent, and the warnings show
 where to look. The safety comes from the person who reads the request.**
@@ -135,23 +144,28 @@ On Windows, clone into a short path such as `C:\src`: one file of a dependency h
 git clone https://github.com/kostas221/agent-action-guard.git
 cd agent-action-guard
 uv sync
-uv run pytest -q                 # 56 tests, no network, no cost
+uv run pytest -q                 # no network, no cost
 cp .env.example .env             # then put your key in .env
 uv run python demo.py            # you approve or reject, under attack (< $0.01)
 ```
 
-Reproduce the results (one banking repeat takes about 15 minutes and $0.11):
+The historical tables used release commit `c8fed2b` (about 15 minutes and $0.11 per
+banking repeat). Recompute them from existing saved traces with `compare.py` and
+`report.py`. To evaluate the current code, use a **fresh output directory** so resumed
+release runs cannot be mixed with runs of the fixes:
 
 ```bash
-uv run python run_benchmark.py --suites banking                                  # baseline
-for rep in 1 2 3; do uv run python run_benchmark.py --config guard-oracle --suites banking --rep $rep; done
-uv run python compare.py                                                         # before/after table
-uv run python report.py --config guard-oracle                                    # one configuration in detail
+uv run python run_benchmark.py --suites banking --runs-dir runs-fixed
+for rep in 1 2 3; do uv run python run_benchmark.py --config guard-oracle --suites banking --rep $rep --runs-dir runs-fixed; done
+uv run python report.py --config guard-oracle --runs-dir runs-fixed
+# Existing release traces in runs/:
+uv run python compare.py
+uv run python report.py --config guard-oracle
 ```
 
 Configurations: `baseline`, `guard-approve-all`, `guard-follow-warnings`, `guard-oracle`,
-`guard-reject-all`. Runs are resumable and never paid twice; every run records its tokens
-and cost. Keep to at most 3 benchmark processes at once (OpenAI rate limits), one per
+`guard-reject-all`. Completed runs are skipped on resume; interrupted attempts can incur
+cost again. Every completed run records its tokens and cost. Keep to at most 3 benchmark processes at once (OpenAI rate limits), one per
 suite and repeat.
 
 ## Layout
@@ -173,8 +187,13 @@ suite and repeat.
   (`important_instructions`). Adaptive attacks are not tested: money redirected to someone
   the user already pays, or data hidden in the subject of an ordinary payment, would arrive
   without a warning.
-- Simulated users bound the result; no real users were studied, and approvals per task is
-  only a proxy for their burden.
+- No real users were studied. The simulated decisions are not bounds on real users,
+  and approvals per task is only a proxy for their burden.
+- A mentioned or previously used value is not necessarily authorized for this task.
+- In trace schema 2, `consumed` means the approval was used but its outcome is unknown,
+  `executed` means the tool returned without an error, and `failed` records an error.
+  Failure does not imply rollback of any side effects. Release 0.1 used `executed`
+  for consumed approvals even when a tool later failed; those historical traces are unchanged.
 - Attacks that need no action (telling the user something false) are outside an action guard.
 - In a real deployment the approval prompt must be outside the agent's control.
 

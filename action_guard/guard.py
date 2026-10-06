@@ -23,7 +23,7 @@ from agentdojo.functions_runtime import Env, FunctionReturnType, FunctionsRuntim
 from agentdojo.logging import Logger, TraceLogger
 from agentdojo.types import ChatMessage
 
-from action_guard.approval import ApprovalGate, Approver
+from action_guard.approval import ActionRequest, ApprovalGate, Approver
 
 # Without the second sentence the trial showed a hijacked agent retrying a rejected payment
 # up to 10 times, using up its turn instead of doing the user's task.
@@ -46,16 +46,20 @@ class Guard:
         if hasattr(self.policy, "start_task"):
             self.policy.start_task(env)  # what the account looked like before the agent acted
 
-    def check(self, tool: str, args: Mapping, query: str, env: Env, messages: Sequence[ChatMessage]) -> str | None:
-        """None if the call may run now; otherwise the error the agent receives instead of the tool's output."""
+    def check(
+        self, tool: str, args: Mapping, query: str, env: Env, messages: Sequence[ChatMessage]
+    ) -> ActionRequest | None:
+        """Consume approval for validated arguments, or raise on rejection; reads need no request."""
         if not self.policy.needs_approval(tool):
             return None
         review = self.policy.review(tool, args, query, env, messages)
-        request = self.gate.request(tool, args, review.summary, review.warnings)
+        request = self.gate.request(tool, args, review.summary, review.warnings, getattr(review, "details", None))
         self.gate.decide(request.id, self.approver.decide(request))
         released = self.gate.consume(tool, args)
         self.save_to_trace()
-        return None if released else REJECTED
+        if released is None:
+            raise PermissionError(REJECTED)
+        return released
 
     def records(self) -> list[dict]:
         """The task's approval requests as plain JSON data."""
@@ -69,7 +73,11 @@ class Guard:
     def save_to_trace(self) -> None:
         logger = Logger.get()
         if isinstance(logger, TraceLogger):
-            logger.context["guard"] = {"approver": self.approver.name, "requests": self.records()}
+            logger.context["guard"] = {
+                "schema_version": 2,
+                "approver": self.approver.name,
+                "requests": self.records(),
+            }
 
 
 class GuardedRuntime(FunctionsRuntime):
@@ -85,12 +93,44 @@ class GuardedRuntime(FunctionsRuntime):
     def run_function(
         self, env, function: str, kwargs: Mapping, raise_on_error: bool = False
     ) -> tuple[FunctionReturnType, str | None]:
-        refusal = self.guard.check(function, kwargs, self.query, env, self.messages)
-        if refusal is not None:
-            if raise_on_error:  # a nested call: the outer call fails with this error
-                raise PermissionError(refusal)
-            return "", refusal
-        return super().run_function(env, function, kwargs, raise_on_error)
+        if function not in self.functions:
+            return super().run_function(env, function, kwargs, raise_on_error)
+
+        # Resolve nested calls through this runtime, so their writes need their own
+        # approvals. Validate/coerce and add defaults BEFORE showing the outer call.
+        try:
+            resolved = self._execute_nested_calls(env, kwargs)
+            args = self.functions[function].parameters.model_validate(resolved).model_dump()
+            json.dumps(args, allow_nan=False)  # only finite JSON values can be bound to approval
+        except Exception as exc:
+            if raise_on_error:
+                raise
+            return "", f"{type(exc).__name__}: {exc}"
+
+        try:
+            request = self.guard.check(function, args, self.query, env, self.messages)
+        except PermissionError as exc:
+            if raise_on_error:
+                raise
+            return "", str(exc)
+
+        try:
+            # args now contains values, not deferred calls. The base runtime still
+            # supplies environment dependencies and preserves its error handling.
+            result, error = super().run_function(env, function, args, raise_on_error)
+        except Exception as exc:
+            if request is not None:
+                self.guard.gate.finish(request.id, f"{type(exc).__name__}: {exc}")
+            raise
+        else:
+            if request is not None:
+                self.guard.gate.finish(request.id, error)
+            return result, error
+        finally:
+            if request is not None:
+                # If interrupted, status remains consumed: the outcome is unknown,
+                # but that approval still cannot be used for a second attempt.
+                self.guard.save_to_trace()
 
 
 class GuardedToolsExecutor(ToolsExecutor):
@@ -114,10 +154,16 @@ class GuardedToolsExecutor(ToolsExecutor):
 
 
 class StartGuard(BasePipelineElement):
-    """First element of the pipeline: a fresh approval gate for every task, and the account as it was."""
+    """First element of the pipeline: a fresh approval gate for every task, and the account as it was.
+
+    AgentDojo reruns a task (up to 3 attempts) when the agent gives no final answer, on the account the
+    last attempt left. All attempts of a task share one runtime, so a retry keeps the gate and the
+    account as it was before the first attempt: what an earlier attempt paid does not become trusted.
+    """
 
     def __init__(self, guard: Guard) -> None:
         self.guard = guard
+        self.task_runtime: FunctionsRuntime | None = None  # held, not its id: a freed object's id can be reused
 
     def query(
         self,
@@ -127,7 +173,9 @@ class StartGuard(BasePipelineElement):
         messages: Sequence[ChatMessage],
         extra_args: dict,
     ) -> tuple[str, FunctionsRuntime, Env, Sequence[ChatMessage], dict]:
-        self.guard.start_task(env)
+        if runtime is not self.task_runtime:  # a new task, not another attempt at the same one
+            self.task_runtime = runtime
+            self.guard.start_task(env)
         return query, runtime, env, messages, extra_args
 
 

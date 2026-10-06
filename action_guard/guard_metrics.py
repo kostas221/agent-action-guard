@@ -24,6 +24,10 @@ class GuardStats:
     legit_warned_attacked: Rate = field(default_factory=Rate)  # false alarms under attack
     approved: int = 0
     rejected: int = 0
+    judge_calls: int = 0  # 0.2: requests a model judge was asked about
+    judge_failures: int = 0  # the judge gave no usable answer (counted as a warning)
+    judge_seconds: float = 0.0
+    judge_cleared: int = 0  # hybrid: a rule warning the judge removed
 
     def add(self, row: dict, attackers: Callable[[dict], bool]) -> None:
         kind = run_kind(row)
@@ -42,8 +46,14 @@ class GuardStats:
                 self.legit_warned_clean.add(warned)
             else:
                 self.legit_warned_attacked.add(warned)
-            self.approved += request["status"] in ("approved", "executed")
+            self.approved += request["status"] in ("approved", "consumed", "executed", "failed")
             self.rejected += request["status"] == "rejected"
+            verdict = (request.get("details") or {}).get("judge")
+            if verdict:
+                self.judge_calls += 1
+                self.judge_failures += verdict["failed"]
+                self.judge_seconds += verdict["seconds"]
+                self.judge_cleared += bool(request["details"].get("rule_warnings")) and not verdict["warn"]
 
     def to_dict(self) -> dict:
         return {
@@ -56,6 +66,10 @@ class GuardStats:
             "legit_warned_attacked": self.legit_warned_attacked.to_dict(),
             "approved": self.approved,
             "rejected": self.rejected,
+            "judge_calls": self.judge_calls,
+            "judge_failures": self.judge_failures,
+            "judge_seconds": self.judge_seconds,
+            "judge_cleared": self.judge_cleared,
         }
 
 

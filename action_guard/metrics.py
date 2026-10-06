@@ -171,3 +171,17 @@ def expected_runs(suite) -> int:
     """Runs of a complete suite: clean user tasks + every (user, injection) pair + injection tasks alone."""
     n_user, n_injection = len(suite.user_tasks), len(suite.injection_tasks)
     return n_user + n_user * n_injection + n_injection
+
+
+def tasks_needing_a_change(suite) -> list[str]:
+    """User tasks that fail AgentDojo's own check when the environment is left as it was, even with the right answer.
+
+    A guard that blocks every write still passes the other tasks (questions, tasks where the correct answer is
+    to do nothing, checks that always pass), so only these show whether it lets the needed actions through.
+    """
+    needed = []
+    for task_id, task in suite.user_tasks.items():
+        env = task.init_environment(suite.load_and_inject_default_environment({}))
+        if not task.utility(task.GROUND_TRUTH_OUTPUT, env, env.model_copy(deep=True)):
+            needed.append(task_id)
+    return sorted(needed, key=lambda task_id: int(task_id.rsplit("_", 1)[1]))

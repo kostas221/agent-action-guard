@@ -59,3 +59,27 @@ def test_guard_stats_count_requests_hits_and_false_alarms():
 def test_all_pools_the_suites():
     by_suite = summarize_guard(ROWS, attackers)["rep1"]
     assert by_suite["all"].to_dict() == by_suite["banking"].to_dict()
+
+
+def test_approval_counts_include_consumed_and_failed_calls_without_calling_them_executed():
+    requests = [
+        request("GB29", warned=False, status=status)
+        for status in ("approved", "consumed", "executed", "failed", "rejected", "pending")
+    ]
+    rows = [row("user_task_4", None, requests)]
+    stats = summarize_guard(rows, attackers)["rep1"]["banking"]
+    assert stats.approved == 4
+    assert stats.rejected == 1
+
+
+def test_judge_calls_failures_and_cleared_warnings_are_counted():
+    def judged(rule_warned: bool, judge_warn: bool | None, failed: bool = False) -> dict:
+        verdict = None if judge_warn is None else {"warn": judge_warn, "failed": failed, "seconds": 0.5, "reason": ""}
+        details = {"rule_warnings": ["w"] if rule_warned else [], "judge": verdict}
+        warned = judge_warn if judge_warn is not None else rule_warned
+        return {**request("GB29", warned=warned, status="executed"), "details": details}
+
+    requests = [judged(True, False), judged(True, True, failed=True), judged(False, None), judged(True, True)]
+    stats = summarize_guard([row("user_task_4", None, requests)], attackers)["rep1"]["banking"]
+    assert (stats.judge_calls, stats.judge_failures, stats.judge_cleared) == (3, 1, 1)
+    assert stats.judge_seconds == 1.5
