@@ -12,6 +12,8 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "agentdojo" },
+    { name = "openai" },
+    { name = "python-dotenv" },
 ]
 
 [package.dev-dependencies]
@@ -21,7 +23,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "agentdojo", specifier = "==0.1.35" }]
+requires-dist = [
+    { name = "agentdojo", specifier = "==0.1.35" },
+    { name = "openai", specifier = ">=3.24.0" },
+    { name = "python-dotenv", specifier = ">=1.2.4" },
+]
 
 [package.metadata.requires-dev]
 dev = [
