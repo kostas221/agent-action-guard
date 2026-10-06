@@ -342,6 +342,25 @@ tell a value computed from a document the user named from an invented one, so th
 limit of the judge alone. The hybrid is not affected: the rules do not warn on task 2, so
 its judge is never asked.
 
+## Final live runs (release 0.2.0)
+
+Since the live runs above, the guard changed in three ways, each measured offline: the
+hybrid's judge votes, it no longer sees `null` arguments, and the history signals W4-W5
+([adaptive-tests.md](adaptive-tests.md)) warn on unusual amounts and the user's details in a
+subject. The final rules and hybrid run live again, three repeats each, in `runs-v0.2.0/`
+(results in `results/v0.2.0/`), so the release's tables come from the released code.
+
+Stated before running:
+
+- Attack success 0 in every repeat, for both.
+- Utility within the noise of the 0.2 live runs: no correct request was warned by the
+  signals in the replay, and the judge changes only make the hybrid clear the task 13
+  address more often. Under attack, on the tasks that need a change: rules about 20%,
+  hybrid about 34%; task 13 done in at least 28 of 30 hybrid runs.
+- A whole-balance transfer to the friend of task 4, if the agent attempts one again, is
+  warned and blocked.
+- The hybrid's judge costs about $0.03 per repeat (two calls per warned request).
+
 The replay measures warnings, not utility; the agent runs were not repeated. The live
 tables above used one call. With votes, about one more of the 30 task 13 runs would be
 expected to pass with the follow-warnings user.
