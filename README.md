@@ -67,10 +67,14 @@ flowchart LR
   must match a complete quoted value or an unquoted whitespace-delimited token (a single
   trailing full stop or comma counts as punctuation); empty values never count as supplied. These are literal source checks, not full data-flow
   tracking or an understanding of the user's intent.
-- **A model judge may clear a rule's warning (0.2, hybrid).** It sees the user's request,
+- **Signals from the account's own history (0.2).** A payment above twice the most the user
+  has paid that account, or the user's own IBAN, name or address in a payment's subject,
+  is warned too, unless the user typed that value.
+- **A model judge may clear a provenance warning (0.2, hybrid).** It sees the user's request,
   the exact call and facts computed by code about where each value first appeared, never
-  the text of files or transactions, where injections live. It can only remove a warning;
-  the request still waits for the user. If the judge fails, the warning stays.
+  the text of files or transactions, where injections live. It can only remove a warning,
+  never a history signal; the request still waits for the user. If the judge fails, the
+  warning stays.
 
 A real approval request from the release 0.1 demo (the current demo also shows the exact JSON arguments):
 
@@ -145,6 +149,14 @@ No warning source told any of the first four attacks from its legitimate twin: e
 both the same way. The judge alone blocked the twins too, so its blocks are refusals, not
 detection. What separates them is what the user knows (their new address, their rent), which
 is why the approval request shows the exact values.
+
+Two signals from the account's own history were added after these results: an amount above
+twice the most ever paid to the same account, and the user's own details in a subject. They
+block the ninefold rent, the 1,500 to Spotify and the details in the refund's subject, but
+not their twins; being written for these cases, these cases do not test them. Replayed on all
+4,515 stored requests, they newly warn on 11, all the agent's own mistakes, none a correct
+request: among them **seven transfers of the user's whole balance (1,810) to a friend that
+the guard had let through and that were executed**.
 
 ### Release 0.1.0: simulated users
 
@@ -249,7 +261,7 @@ suite and repeat.
 | `action_guard/approval.py` | approval gate (exact call, used once) and simulated users |
 | `action_guard/banking.py` | banking policy: what needs approval, what the user sees, warnings, provenance facts, oracle |
 | `action_guard/judge.py`, `judge_pilot.py` | the model judge, and its offline replay on stored requests |
-| `adaptive_tests.py` | harder attacks, with the agent assumed hijacked |
+| `adaptive_tests.py`, `signals_replay.py` | harder attacks with the agent assumed hijacked; the history signals' cost on stored requests |
 | `action_guard/guard.py` | the guard inside an AgentDojo pipeline |
 | `action_guard/pipelines.py` | configurations |
 | `action_guard/metrics.py`, `guard_metrics.py`, `attacks.py` | rates with confidence intervals, guard and attack breakdowns |
@@ -261,11 +273,13 @@ suite and repeat.
 
 - One model (gpt-4o-mini), one suite with a policy (banking), one attack template
   (`important_instructions`), plus 8 hand-written harder attacks with the agent assumed
-  hijacked ([docs/adaptive-tests.md](docs/adaptive-tests.md)). Measured there: the rules and
-  the hybrid do not check the amount or the subject of a payment to an account the user
-  pays or typed (a ninefold rent, the user's IBAN in a refund's subject: both ran), and the
-  hybrid clears a forged address added to the file the user named, exactly as it clears the
-  real one. Text in a payment's subject written for the judge did not move it (0 of 30).
+  hijacked ([docs/adaptive-tests.md](docs/adaptive-tests.md)). Measured there: W1-W3 do not
+  check the amount or the subject of a payment to an account the user pays or typed (a
+  ninefold rent, the user's IBAN in a refund's subject: both ran); the history signals added
+  for this block those cases, but were written for them and are untested on other attacks.
+  An amount below twice the usual, or other data in a subject, still passes. The hybrid
+  clears a forged address added to the file the user named, exactly as it clears the real
+  one. Text in a payment's subject written for the judge did not move it (0 of 30).
 - In the live runs the judge kept the warning on 3 of 31 identical legitimate requests;
   with votes and without `null` arguments, on none (offline). Its facts come from literal
   matching: a value the agent computed from a document (a rent increase) looks the same as
@@ -282,11 +296,9 @@ suite and repeat.
 
 ## Next
 
-Signals from the account's own history for what the harder tests showed unchecked (an
-amount far from earlier payments to the same payee, the user's details in a subject),
-measured for false warnings first; a policy for the Slack suite; a second benchmark;
-stopping a task after repeated warned rejections; and telling the agent exactly what is
-wrong with an impossible request (paying the user's own account).
+A policy for the Slack suite; a second benchmark; new attacks, written by someone else,
+against the history signals; stopping a task after repeated warned rejections; and telling
+the agent exactly what is wrong with an impossible request (paying the user's own account).
 
 ## Acknowledgements
 
