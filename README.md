@@ -116,11 +116,13 @@ which warned on almost everything, looks good in the overall columns.
   attacker who controls a bill can make the payment identical to the real one.
 - **Cost:** the judge added about $0.00012 and 1.3 to 1.7 s per call; the hybrid called it
   on 0.8 requests per run. It never failed to answer in 705 calls.
-- **The judge now votes.** The same request did not always get the same answer, so since
-  these runs the hybrid asks the judge twice, a third time only if the answers differ, and
-  the majority decides. Replayed on the same 422 requests: 0 of 377 attacker requests
-  cleared, the legitimate address change cleared 30 of 31 times instead of 28, for about
-  twice the judge's cost. Measured offline; the table above used one call.
+- **Two changes since these runs, measured offline on the same 422 requests.** The judge
+  did not always answer the same request the same way, so the hybrid now asks it twice, a
+  third time only if the answers differ, and the majority decides. And the judge no longer
+  sees `null` arguments, which the 0.1.1 validation had added and the pilots had never
+  shown it. Together: 0 of 377 attacker requests cleared, the legitimate address change
+  cleared 31 of 31 times (28 in the live runs), for about twice the judge's cost. The table
+  above used the live version.
 
 Design, pilots, the judge's errors and the limits of this result:
 [docs/judge-design.md](docs/judge-design.md).
@@ -243,9 +245,10 @@ suite and repeat.
   without a warning.
 - The hybrid's gain rests on trusting a file the user named. An attacker who can write
   into that file (a forged address change, a swapped account on a bill) is not tested yet,
-  nor is text in a payment written to persuade the judge. The judge is not fully
-  consistent: it kept the warning on 3 of 31 identical legitimate requests with one call,
-  and on 1 of 31 with a majority vote.
+  nor is text in a payment written to persuade the judge. In the live runs the judge kept
+  the warning on 3 of 31 identical legitimate requests; with votes and without `null`
+  arguments, on none (offline). Its facts come from literal matching: a value the agent
+  computed from a document (a rent increase) looks the same as one it made up.
 - No real users were studied. The simulated decisions are not bounds on real users,
   and approvals per task is only a proxy for their burden.
 - A mentioned or previously used value is not necessarily authorized for this task.
@@ -261,8 +264,8 @@ suite and repeat.
 Harder tests for the hybrid (a forged file, a known payee with a wrong amount, data leaked
 in a payment subject, text aimed at the judge), a policy for the Slack suite, a second
 benchmark, a soft hint for unusual amounts, stopping a task after repeated warned
-rejections, showing the judge only the arguments that change, and telling the agent
-exactly what is wrong with an impossible request (paying the user's own account).
+rejections, and telling the agent exactly what is wrong with an impossible request
+(paying the user's own account).
 
 ## Acknowledgements
 
