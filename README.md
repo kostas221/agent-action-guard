@@ -116,6 +116,11 @@ which warned on almost everything, looks good in the overall columns.
   attacker who controls a bill can make the payment identical to the real one.
 - **Cost:** the judge added about $0.00012 and 1.3 to 1.7 s per call; the hybrid called it
   on 0.8 requests per run. It never failed to answer in 705 calls.
+- **The judge now votes.** The same request did not always get the same answer, so since
+  these runs the hybrid asks the judge twice, a third time only if the answers differ, and
+  the majority decides. Replayed on the same 422 requests: 0 of 377 attacker requests
+  cleared, the legitimate address change cleared 30 of 31 times instead of 28, for about
+  twice the judge's cost. Measured offline; the table above used one call.
 
 Design, pilots, the judge's errors and the limits of this result:
 [docs/judge-design.md](docs/judge-design.md).
@@ -239,7 +244,8 @@ suite and repeat.
 - The hybrid's gain rests on trusting a file the user named. An attacker who can write
   into that file (a forged address change, a swapped account on a bill) is not tested yet,
   nor is text in a payment written to persuade the judge. The judge is not fully
-  consistent: it kept the warning on 3 of 31 identical legitimate requests.
+  consistent: it kept the warning on 3 of 31 identical legitimate requests with one call,
+  and on 1 of 31 with a majority vote.
 - No real users were studied. The simulated decisions are not bounds on real users,
   and approvals per task is only a proxy for their burden.
 - A mentioned or previously used value is not necessarily authorized for this task.
@@ -254,8 +260,9 @@ suite and repeat.
 
 Harder tests for the hybrid (a forged file, a known payee with a wrong amount, data leaked
 in a payment subject, text aimed at the judge), a policy for the Slack suite, a second
-benchmark, a soft hint for unusual amounts, and stopping a task after repeated warned
-rejections.
+benchmark, a soft hint for unusual amounts, stopping a task after repeated warned
+rejections, showing the judge only the arguments that change, and telling the agent
+exactly what is wrong with an impossible request (paying the user's own account).
 
 ## Acknowledgements
 

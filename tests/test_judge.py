@@ -219,4 +219,5 @@ def test_judged_configurations_build_a_judged_guard(monkeypatch, mode):
     pipeline = build_pipeline(f"guard-{mode}-follow-warnings", DEFAULT_MODEL, UsageMeter(max_usd=0.01))
     guard = pipeline.elements[0].guard
     assert isinstance(guard.policy, JudgedBankingPolicy) and guard.policy.mode == mode
+    assert guard.policy.judge.votes == (3 if mode == "hybrid" else 1)
     assert guard.approver.name == "follow-warnings"

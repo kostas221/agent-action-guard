@@ -17,7 +17,7 @@ from action_guard.approval import ApproveAll, Approver, FollowWarnings, RejectAl
 from action_guard.banking import BankingOracle, BankingPolicy, JudgedBankingPolicy
 from action_guard.guard import Guard, guarded_pipeline
 from action_guard.judge import Judge
-from action_guard.settings import JUDGE_MODEL
+from action_guard.settings import HYBRID_JUDGE_VOTES, JUDGE_MODEL
 from action_guard.usage import PRICES, UsageMeter
 
 APPROVERS = {approver.name: approver for approver in (ApproveAll, RejectAll, FollowWarnings, BankingOracle)}
@@ -40,7 +40,8 @@ def judged_policy(mode: str, meter: UsageMeter) -> JudgedBankingPolicy:
     if JUDGE_MODEL not in PRICES:
         raise ValueError(f"No price for {JUDGE_MODEL!r}; add it to PRICES in action_guard/usage.py")
     client = meter.wrap_client(openai.OpenAI(max_retries=3), role="guard")
-    return JudgedBankingPolicy(Judge(client, JUDGE_MODEL), mode)
+    votes = HYBRID_JUDGE_VOTES if mode == "hybrid" else 1
+    return JudgedBankingPolicy(Judge(client, JUDGE_MODEL, votes=votes), mode)
 
 
 def guarded_agent(model: str, meter: UsageMeter, approver: Approver, policy=None) -> AgentPipeline:
