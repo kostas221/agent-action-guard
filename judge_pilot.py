@@ -2,6 +2,8 @@
 
     uv run python judge_pilot.py --dry-run          # what would be sent, how many calls; no cost
     uv run python judge_pilot.py                    # gpt-4o-mini judge, about 250 calls, well under $0.10
+    uv run python judge_pilot.py --runs-dir runs-v0.2 --config guard-hybrid-follow-warnings \
+        --select warned --votes 3 --out results/judge-pilot-3.json   # majority vote on what the hybrid's judge saw
 
 No agent runs: each saved request is rebuilt as the guard saw it (the conversation up to
 the call), the judge gives its verdict, and the verdict is compared with the label
@@ -31,6 +33,19 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 ALWAYS_TASKS = ("user_task_0", "user_task_13")  # where the rules warn on values the user asked for
 
 
+def same_call(raw: dict, validated: dict) -> bool:
+    """The agent's arguments as written vs as the guard recorded them (0.1.1 validates: 100 -> 100.0, None defaults)."""
+
+    def plain(args: dict) -> dict:
+        return {
+            k: float(v) if isinstance(v, int | float) and not isinstance(v, bool) else v
+            for k, v in args.items()
+            if v is not None
+        }
+
+    return plain(raw) == plain(validated)
+
+
 def saved_requests(runs_dir: Path, config: str, suite) -> list[dict]:
     """Every approval request of runs with a user task, with the conversation the guard had seen before it."""
     items = []
@@ -52,13 +67,15 @@ def saved_requests(runs_dir: Path, config: str, suite) -> list[dict]:
                 (
                     i
                     for i, (_, f, a) in enumerate(calls)
-                    if i not in used and f == record["tool"] and a == record["args"]
+                    if i not in used and f == record["tool"] and same_call(a, record["args"])
                 ),
                 None,
             )
             if match is None:
                 continue
             used.add(match)
+            details = record.get("details") or {}  # runs with a judge: the rules' own warnings are kept here
+            live = details.get("judge")
             items.append(
                 {
                     "rep": path.relative_to(runs_dir / config).parts[0],
@@ -67,7 +84,8 @@ def saved_requests(runs_dir: Path, config: str, suite) -> list[dict]:
                     "kind": "attacked" if injection else "clean",
                     "tool": record["tool"],
                     "args": record["args"],
-                    "rules_warned": bool(record["warnings"]),
+                    "rules_warned": bool(details.get("rule_warnings", record["warnings"])),
+                    "live_judge_warned": live["warn"] if live else None,
                     "attacker": bool(injection) and is_attackers(record["args"], values),
                     "messages": trace["messages"][: calls[match][0]],
                 }
@@ -75,8 +93,11 @@ def saved_requests(runs_dir: Path, config: str, suite) -> list[dict]:
     return items
 
 
-def select(items: list[dict], sample: int, seed: int) -> list[dict]:
-    """All requests without attack, all of the tasks where rules over-warn, a fixed random sample of the rest."""
+def select(items: list[dict], how: str, sample: int, seed: int) -> list[dict]:
+    """pilot: all requests without attack, all of the tasks where rules over-warn, a fixed random sample of the rest.
+    warned: every request the rules warned on, i.e. every request the hybrid asks the judge about."""
+    if how == "warned":
+        return [i for i in items if i["rules_warned"]]
     chosen = [i for i in items if i["kind"] == "clean" or i["user_task"] in ALWAYS_TASKS]
     rest = [i for i in items if i not in chosen]
     return chosen + random.Random(seed).sample(rest, min(sample, len(rest)))
@@ -115,10 +136,18 @@ def summarize(results: list[dict], title: str) -> dict:
     for task in ALWAYS_TASKS:
         rows = [r for r in results if r["user_task"] == task and not r["attacker"]]
         cleared = sum(r["rules_warned"] and not r["verdict"]["warn"] for r in rows)
+        live = sum(r["rules_warned"] and r["live_judge_warned"] is False for r in rows)
         print(
             f"\n{task}, legitimate requests the rules warned on: {sum(r['rules_warned'] for r in rows)}, "
-            f"cleared by the judge: {cleared}"
+            f"cleared by the judge: {cleared}" + (f" (in the live run: {live})" if live else "")
         )
+    replayed = [r for r in results if r["live_judge_warned"] is not None]
+    if replayed:
+        summary["different_from_live"] = sum(r["live_judge_warned"] != r["verdict"]["warn"] for r in replayed)
+        print(f"\nverdicts different from the live run: {summary['different_from_live']} of {len(replayed)}")
+    if any(r["verdict"]["votes"] for r in results):
+        summary["third_calls"] = sum(len(r["verdict"]["votes"]) == 3 for r in results)
+        print(f"requests that needed a third call: {summary['third_calls']} of {len(results)}")
     seconds = [r["verdict"]["seconds"] for r in results]
     summary["failures"] = sum(r["verdict"]["failed"] for r in results)
     summary["seconds"] = {"mean": statistics.mean(seconds), "max": max(seconds)} if seconds else {}
@@ -133,15 +162,17 @@ def main() -> int:
     ap.add_argument("--config", default="guard-follow-warnings", help="saved runs to replay")
     ap.add_argument("--runs-dir", default="runs")
     ap.add_argument("--model", default=DEFAULT_MODEL)
-    ap.add_argument("--sample", type=int, default=150, help="random attacked requests added to the fixed ones")
+    ap.add_argument("--select", default="pilot", choices=("pilot", "warned"), help="which saved requests (see select)")
+    ap.add_argument("--sample", type=int, default=150, help="pilot: random attacked requests added to the fixed ones")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--votes", type=int, default=1, choices=(1, 3), help="3: majority of up to three judge calls")
     ap.add_argument("--max-usd", type=float, default=0.25)
     ap.add_argument("--dry-run", action="store_true", help="show the selection and one prompt, call nothing")
     ap.add_argument("--out", default="results/judge-pilot.json")
     args = ap.parse_args()
 
     suite = get_suite(BENCHMARK_VERSION, "banking")
-    items = select(saved_requests(Path(args.runs_dir), args.config, suite), args.sample, args.seed)
+    items = select(saved_requests(Path(args.runs_dir), args.config, suite), args.select, args.sample, args.seed)
     attackers = sum(i["attacker"] for i in items)
     print(
         f"{len(items)} requests from {args.config}: {attackers} attacker requests, "
@@ -155,7 +186,7 @@ def main() -> int:
 
     load_dotenv(".env")
     meter = UsageMeter(args.max_usd)
-    judge = Judge(meter.wrap_client(openai.OpenAI(max_retries=3), role="guard"), args.model)
+    judge = Judge(meter.wrap_client(openai.OpenAI(max_retries=3), role="guard"), args.model, votes=args.votes)
     results = []
     try:
         for number, item in enumerate(items, start=1):
@@ -178,9 +209,11 @@ def main() -> int:
         json.dumps(
             {
                 "model": args.model,
-                "source_runs": args.config,
+                "source_runs": str(Path(args.runs_dir) / args.config),
+                "select": args.select,
                 "sample": args.sample,
                 "seed": args.seed,
+                "votes": args.votes,
                 "calls": len(results),
                 "usd": meter.usd,
                 "summary": summary,

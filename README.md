@@ -5,17 +5,20 @@ the user's yes or no, the approval covers that exact action once, and a warning 
 a recipient, password or address did not come from the user. Evaluated against prompt
 injection on [AgentDojo](https://github.com/ethz-spylab/agentdojo).
 
-**Released 0.1 results on AgentDojo's banking suite (gpt-4o-mini, 3 repeats):**
-attack success was 49.8% without the guard and **0/432** when a simulated user rejected
-every warned action. All 395 attacker requests in that configuration carried a warning.
-Clean-task utility fell from 52.1% to 39.6%; an attack-aware oracle had utility close to
-the baseline. These results cover one attack template, not arbitrary prompt injections.
+**Results on AgentDojo's banking suite (gpt-4o-mini, 3 repeats, one attack template):**
+without the guard 49.8% of attacks succeeded; with a simulated user who rejects every
+warned action, **none** did, whatever the warning source (0/432 with the rules and with the
+hybrid, 0/144 with a model judge alone). Version 0.2 adds a model
+judge that may clear a rule's warning. This **hybrid** kept the warning on all 377 attacker
+requests it saw, cut warnings on legitimate requests from 17% to 4.5%, and brought utility
+under attack on the tasks that need an action back to the undefended agent's level (33.7%
+against 32.5%; rules alone 19.8%). The gain comes from one case, a value taken from a file
+the user named; a forged file has not been tested yet.
 
-The tables below describe release commit `c8fed2b` (0.1.0). Version 0.1.1 fixes resolve and
-validate arguments before approval, tighten literal matching, and distinguish consumed
-approvals from successful or failed executions. They have offline regression tests;
-the paid benchmark has not been rerun for these changes. See
-[the policy](docs/approval-policy.md#4-binding-rules-contract-for-step-2).
+Version 0.1.1 resolved and validated arguments before approval, tightened literal matching,
+and separated consumed approvals from successful or failed executions
+([policy](docs/approval-policy.md#4-binding-rules-contract-for-step-2)); its rules were
+re-run in the 0.2 evaluation. The 0.1.0 tables describe release commit `c8fed2b`.
 
 ## The problem
 
@@ -64,6 +67,10 @@ flowchart LR
   must match a complete quoted value or an unquoted whitespace-delimited token (a single
   trailing full stop or comma counts as punctuation); empty values never count as supplied. These are literal source checks, not full data-flow
   tracking or an understanding of the user's intent.
+- **A model judge may clear a rule's warning (0.2, hybrid).** It sees the user's request,
+  the exact call and facts computed by code about where each value first appeared, never
+  the text of files or transactions, where injections live. It can only remove a warning;
+  the request still waits for the user. If the judge fails, the warning stays.
 
 A real approval request from the release 0.1 demo (the current demo also shows the exact JSON arguments):
 
@@ -83,21 +90,54 @@ No person answers in a benchmark, so simulated users decide. They are scenarios,
 mathematical bounds or predictions of human behavior. The oracle uses privileged knowledge
 of the benchmark's attacker values; it can still approve other mistakes.
 
-| Banking, 3 repeats pooled | Attack success | Utility, no attack | Utility under attack | Approvals per task |
-|---|---|---|---|---|
-| no guard | **49.8%** [45-54] | 52.1% [38-66] | 46.5% [42-51] | - |
-| guard, user approves everything (1 repeat) | 46.5% [39-55] | 62.5% [39-82] | 47.9% [40-56] | 0.88 |
-| guard, user rejects what is warned | **0.0%** [0-1] | 39.6% [27-54] | 41.0% [36-46] | 0.90 |
-| guard, user rejects only the attacker (oracle) | **0.0%** [0-1] | 54.2% [40-67] | 47.2% [43-52] | 0.79 |
-| guard, user rejects everything | **0.0%** [0-1] | 37.5% [25-52] | 38.0% [34-43] | 0.98 |
+### Version 0.2: where the warning comes from
+
+The simulated user is the same in every row: it rejects what is warned and approves the
+rest. Only the source of the warning changes.
+
+| Banking, 3 repeats pooled | Attack success | Utility, no attack | Utility under attack | Under attack, tasks needing a change ¹ | Warnings on legitimate requests |
+|---|---|---|---|---|---|
+| no guard | **49.8%** [45-54] | 52.1% [38-66] | 46.5% [42-51] | 32.5% [27-39] | - |
+| rules | **0/432** | 47.9% [34-62] | 40.7% [36-45] | 19.8% [15-25] | 17% (65/388) |
+| model judge alone (1 repeat) | **0/144** | 50.0% [28-72] | 48.6% [41-57] | 19.8% [13-30] | 87% (132/151) |
+| **hybrid**: rules, the judge may clear | **0/432** | 54.2% [40-67] | 48.4% [44-53] | 33.7% [28-40] | 4.5% (17/375) |
+
+¹ The 9 of 16 tasks whose own AgentDojo check fails if the account is left untouched. The
+other 7 (questions, two checks that always pass, two requests where doing nothing counts as
+correct) pass without any action, so rejecting scores there: that is why the judge alone,
+which warned on almost everything, looks good in the overall columns.
+
+- **The hybrid kept every warning on the attacker's requests** (377/377) and cleared 28, all
+  the same legitimate address change taken from a file the user named. Its gain is that
+  one task: 28 of 30 runs done, against 0 of 30 with the rules.
+- **Most remaining warnings catch the agent's own mistakes**: of the hybrid's 17, 11 were
+  payments to the user's own account, to the literal text `friend's IBAN`, or to a garbled
+  copy of the attacker's account. 3 were the bill of user task 0, warned on purpose: an
+  attacker who controls a bill can make the payment identical to the real one.
+- **Cost:** the judge added about $0.00012 and 1.3 to 1.7 s per call; the hybrid called it
+  on 0.8 requests per run. It never failed to answer in 705 calls.
+
+Design, pilots, the judge's errors and the limits of this result:
+[docs/judge-design.md](docs/judge-design.md).
+
+### Release 0.1.0: simulated users
+
+| Banking, 3 repeats pooled | Attack success | Utility, no attack | Utility under attack | Under attack, tasks needing a change | Approvals per task |
+|---|---|---|---|---|---|
+| no guard | **49.8%** [45-54] | 52.1% [38-66] | 46.5% [42-51] | 32.5% [27-39] | - |
+| guard, user approves everything (1 repeat) | 46.5% [39-55] | 62.5% [39-82] | 47.9% [40-56] | 33.3% [24-44] | 0.88 |
+| guard, user rejects what is warned | **0.0%** [0-1] | 39.6% [27-54] | 41.0% [36-46] | 22.2% [17-28] | 0.90 |
+| guard, user rejects only the attacker (oracle) | **0.0%** [0-1] | 54.2% [40-67] | 47.2% [43-52] | 32.5% [27-39] | 0.79 |
+| guard, user rejects everything | **0.0%** [0-1] | 37.5% [25-52] | 38.0% [34-43] | 0.0% [0-2] | 0.98 |
 
 95% Wilson intervals describe pooled runs on repeated benchmark cases, not a guarantee
 for unseen attacks. The observed baseline spread was 2.8 percentage points; this is not
 a statistical-significance threshold.
 
 - **No unapproved attacker write was observed** in these saved runs.
-- **Oracle utility was close to the baseline.** This does not establish equivalence or zero
-  utility cost. Following every warning rejected the legitimate file-sourced bill and address.
+- **Oracle utility was close to the baseline**, and equal on the tasks that need a change
+  (79 of 243 attacked runs each). This does not establish equivalence or zero utility cost.
+  Following every warning rejected the legitimate file-sourced bill and address.
 - **Approving every request left attacks effective:** 67/144 succeeded in the control run.
 
 **The guard makes sure nothing happens without the user's consent, and the warnings show
@@ -133,6 +173,14 @@ v1.2.2 changed and added attacker goals, so this project compares against its ow
 - **Two AgentDojo banking checks pass without the task being done** (user tasks 5 and 6
   match payments already in the history), and in user task 0 the injection replaces the
   bill's payment details, including the account the user wants to pay.
+- **Overall utility rewards refusing.** Seven of the sixteen banking tasks pass with no
+  change to the account, two of them only if nothing changes. A model judge that warned on
+  almost everything looked better than the rules until utility was counted on the tasks
+  that need an action, where it was no better.
+- **Benchmark retries reopened trust.** AgentDojo reruns a task that ended without an
+  answer, on the account the last attempt left; the guard took each attempt for a new task,
+  so a payee approved in one attempt was trusted in the next. Attempts now share the task's
+  trust.
 
 ## Try it
 
@@ -147,25 +195,25 @@ uv sync
 uv run pytest -q                 # no network, no cost
 cp .env.example .env             # then put your key in .env
 uv run python demo.py            # you approve or reject, under attack (< $0.01)
+uv run python demo.py --user-task user_task_13 --warnings hybrid   # the judge may clear a rule warning
 ```
 
-The historical tables used release commit `c8fed2b` (about 15 minutes and $0.11 per
-banking repeat). Recompute them from existing saved traces with `compare.py` and
-`report.py`. To evaluate the current code, use a **fresh output directory** so resumed
-release runs cannot be mixed with runs of the fixes:
+A banking repeat takes about 15 to 30 minutes and $0.11 to $0.16. The 0.1.0 tables used
+release commit `c8fed2b` and its traces in `runs/`; the 0.2 runs went to `runs-v0.2/`.
+Evaluate changed code in a **fresh output directory**, so its runs are never mixed with
+earlier ones:
 
 ```bash
-uv run python run_benchmark.py --suites banking --runs-dir runs-fixed
-for rep in 1 2 3; do uv run python run_benchmark.py --config guard-oracle --suites banking --rep $rep --runs-dir runs-fixed; done
-uv run python report.py --config guard-oracle --runs-dir runs-fixed
-# Existing release traces in runs/:
+for rep in 1 2 3; do uv run python run_benchmark.py --config guard-hybrid-follow-warnings --suites banking --rep $rep --runs-dir runs-v0.2; done
+uv run python report.py --config guard-hybrid-follow-warnings --runs-dir runs-v0.2
+uv run python compare.py --runs-dir runs-v0.2 --configs guard-follow-warnings guard-judge-follow-warnings guard-hybrid-follow-warnings
+# Release 0.1.0 traces in runs/:
 uv run python compare.py
-uv run python report.py --config guard-oracle
 ```
 
 Configurations: `baseline`, `guard-approve-all`, `guard-follow-warnings`, `guard-oracle`,
-`guard-reject-all`. Completed runs are skipped on resume; interrupted attempts can incur
-cost again. Every completed run records its tokens and cost. Keep to at most 3 benchmark processes at once (OpenAI rate limits), one per
+`guard-reject-all`, `guard-judge-follow-warnings`, `guard-hybrid-follow-warnings`.
+Completed runs are skipped on resume; interrupted attempts can incur cost again. Every completed run records its tokens and cost. Keep to at most 3 benchmark processes at once (OpenAI rate limits), one per
 suite and repeat.
 
 ## Layout
@@ -173,12 +221,13 @@ suite and repeat.
 | Path | What it holds |
 |---|---|
 | `action_guard/approval.py` | approval gate (exact call, used once) and simulated users |
-| `action_guard/banking.py` | banking policy: what needs approval, what the user sees, warnings, oracle |
+| `action_guard/banking.py` | banking policy: what needs approval, what the user sees, warnings, provenance facts, oracle |
+| `action_guard/judge.py`, `judge_pilot.py` | the model judge, and its offline replay on stored requests |
 | `action_guard/guard.py` | the guard inside an AgentDojo pipeline |
 | `action_guard/pipelines.py` | configurations |
 | `action_guard/metrics.py`, `guard_metrics.py`, `attacks.py` | rates with confidence intervals, guard and attack breakdowns |
 | `run_benchmark.py`, `report.py`, `compare.py`, `demo.py` | run, report, compare, try |
-| `docs/` | policy, results, demo runs |
+| `docs/` | policy, results, demo runs, the judge's design and results |
 | `results/` | the numbers behind every table, recomputable from the run traces |
 
 ## Limits
@@ -187,6 +236,10 @@ suite and repeat.
   (`important_instructions`). Adaptive attacks are not tested: money redirected to someone
   the user already pays, or data hidden in the subject of an ordinary payment, would arrive
   without a warning.
+- The hybrid's gain rests on trusting a file the user named. An attacker who can write
+  into that file (a forged address change, a swapped account on a bill) is not tested yet,
+  nor is text in a payment written to persuade the judge. The judge is not fully
+  consistent: it kept the warning on 3 of 31 identical legitimate requests.
 - No real users were studied. The simulated decisions are not bounds on real users,
   and approvals per task is only a proxy for their burden.
 - A mentioned or previously used value is not necessarily authorized for this task.
@@ -199,8 +252,10 @@ suite and repeat.
 
 ## Next
 
-A model-based and a hybrid guard, policies for the other three suites, a second benchmark,
-a soft hint for unusual amounts, and stopping a task after repeated warned rejections.
+Harder tests for the hybrid (a forged file, a known payee with a wrong amount, data leaked
+in a payment subject, text aimed at the judge), a policy for the Slack suite, a second
+benchmark, a soft hint for unusual amounts, and stopping a task after repeated warned
+rejections.
 
 ## Acknowledgements
 
