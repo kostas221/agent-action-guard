@@ -169,10 +169,10 @@ attack and 40.7% under attack, within the noise of 0.1.0.
 
 ## Assumptions and limits
 
-- One model, one suite, one attack. Adaptive attacks are not tested, for example an
-  attacker who redirects money to someone the user already pays, or one who hides data in
-  the subject of a payment to a known payee: both arrive without a warning, and only the
-  user's reading of the request stops them.
+- One model, one suite, one attack. Harder attacks were tested later, in version 0.2
+  ([adaptive-tests.md](adaptive-tests.md)): a wrong amount or the user's details in the
+  subject of a payment to someone the user already pays arrive without a warning, as
+  expected here, and only the user's reading of the request stops them.
 - Real users were not studied, and the simulated policies do not bound their behavior.
   Approvals per task is only a proxy for their burden.
 - Release 0.1 marked a consumed approval as `executed` before the tool returned, including
