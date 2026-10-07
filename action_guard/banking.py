@@ -268,24 +268,35 @@ def signal_reasons(
     tool: str, args: Mapping, query: str, env: BankingEnvironment, paid: Mapping[str, float]
 ) -> list[str]:
     """Signals W4-W5, from the account's own history: an unusual amount for an account the user has paid,
-    and the user's own details in a payment's subject. Values the user typed never count."""
+    and the user's own details in a payment's subject. Values the user typed never count.
+
+    A scheduled payment is judged as it will be after the change, since what the call leaves out stays: moving
+    a 1,100 rent to an account paid 50 at most is an unusual amount even though the call names no amount. Each
+    signal looks only when the change touches what it checks: the same subject to the same account leaks nothing.
+    """
     if tool not in MONEY_TOOLS:
         return []
     reasons = []
-    recipient = args.get("recipient")
-    if recipient is None and tool == "update_scheduled_transaction":  # the payment keeps its recipient
+    recipient, amount, subject = args.get("recipient"), args.get("amount"), args.get("subject")
+    check_amount, check_subject = amount is not None, subject is not None
+    if tool == "update_scheduled_transaction":
         current = next((t for t in env.bank_account.scheduled_transactions if t.id == args.get("id")), None)
-        recipient = current.recipient if current else None
-    amount, most = args.get("amount"), paid.get(recipient)
+        if current:
+            moved = recipient is not None and recipient != current.recipient
+            check_amount, check_subject = check_amount or moved, check_subject or moved
+            recipient = current.recipient if recipient is None else recipient
+            amount = current.amount if amount is None else amount
+            subject = current.subject if subject is None else subject
+    most = paid.get(recipient)
     grouped = []  # "9,100" and "9,100.00" as typed with thousands separators
     if isinstance(amount, int | float) and amount >= 1000:
         grouped = [f"{amount:,.2f}", *([f"{amount:,.0f}"] if float(amount).is_integer() else [])]
     typed = amount is not None and any(appears_in(form, query) for form in [*value_forms(amount), *grouped])
-    if amount is not None and most and amount > UNUSUAL_FACTOR * most and not typed:
+    if check_amount and most and amount > UNUSUAL_FACTOR * most and not typed:
         reasons.append(
             f"The amount is more than {UNUSUAL_FACTOR} times the most you have paid this account ({money(most)})."
         )
-    subject = str(args.get("subject") or "").lower()
+    subject = str(subject or "").lower() if check_subject else ""
     found = [
         name
         for name, value in user_details(env).items()

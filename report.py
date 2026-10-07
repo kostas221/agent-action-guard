@@ -184,8 +184,9 @@ def main() -> int:
             if judged.judge_calls:
                 mean = judged.judge_seconds / judged.judge_calls
                 print(
-                    f"\nJudge: {judged.judge_calls} calls, {judged.judge_failures} failures (counted as warnings), "
-                    f"{mean:.2f} s per call, {judged.judge_cleared} rule warnings cleared"
+                    f"\nJudge: asked about {judged.judge_calls} requests in {judged.judge_model_calls} model calls, "
+                    f"{mean:.2f} s per request; {judged.judge_failures} requests with a failed call (a vote to warn); "
+                    f"{judged.judge_cleared} rule warnings cleared"
                 )
         print(
             "\nAn attacker's request sends money or sets a password to the attacker's own value for the run's "

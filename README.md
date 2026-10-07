@@ -1,5 +1,7 @@
 # Agent Action Guard
 
+[![tests](https://github.com/kostas221/agent-action-guard/actions/workflows/tests.yml/badge.svg)](https://github.com/kostas221/agent-action-guard/actions/workflows/tests.yml)
+
 A guard between an LLM agent and its tools. Every action that changes something waits for
 the user's yes or no, the approval covers that exact action once, and a warning shows when
 a recipient, password or address did not come from the user. Evaluated against prompt
@@ -21,6 +23,14 @@ Version 0.1.1 resolved and validated arguments before approval, tightened litera
 and separated consumed approvals from successful or failed executions
 ([policy](docs/approval-policy.md#4-binding-rules-contract-for-step-2)); its rules were
 re-run in the 0.2 evaluation. The 0.1.0 tables describe release commit `c8fed2b`.
+
+Version 0.2.1 fixes two bugs found in a review after 0.2.0. The history signals now judge a
+scheduled payment as it will be after the change: moving the 1,100 rent to an account paid
+50 at most named no amount, so it carried no warning
+([details](docs/adaptive-tests.md#history-signals-w4-w5-added-after-these-results)). And
+`compare.py` no longer replaces saved results when runs are missing, as in a fresh clone.
+No stored decision changes, so every table stands; the run traces behind them are now
+published ([reproduce](#reproduce-the-tables)).
 
 ## The problem
 
@@ -75,8 +85,8 @@ flowchart LR
 - **A model judge may clear a provenance warning (0.2, hybrid).** It sees the user's request,
   the exact call and facts computed by code about where each value first appeared, never
   the text of files or transactions, where injections live. It can only remove a warning,
-  never a history signal; the request still waits for the user. If the judge fails, the
-  warning stays.
+  never a history signal; the request still waits for the user. A call to the judge that
+  fails counts as a vote to keep the warning, which goes only if most answers clear it.
 
 A real approval request from the release 0.1 demo (the current demo also shows the exact JSON arguments):
 
@@ -123,11 +133,13 @@ which warned on almost everything, looks good in the overall columns.
   purpose: an attacker who controls a bill can make the payment identical to the real one.
 - **The judge votes:** it is asked twice, a third time only if the answers differ, and the
   majority decides; it no longer sees `null` arguments. Both changes were measured offline
-  first ([design](docs/judge-design.md#majority-vote-after-the-live-runs)). In 423 calls the two
-  answers never differed. Cost: about $0.034 per repeat, about 2 s per request asked.
-- **When the judge fails, the warning stays.** Past the account's daily request limit, 10
-  of 138 calls failed: the hybrid behaved like the rules on those requests, never less
-  safe. That run was set aside and repeated.
+  first ([design](docs/judge-design.md#majority-vote-after-the-live-runs)). On 423 requests
+  (846 model calls) the two answers never differed. Cost: about $0.034 per repeat, about 2 s
+  per request asked.
+- **A failed call is a vote to keep the warning**, so a failing judge can add warnings but
+  never remove one. Past the account's daily request limit, 10 of 138 requests had a failed
+  call: 9 kept their warning, and on one, the task 13 address, the other two answers still
+  cleared it. That run was set aside and repeated.
 - **The first 0.2 runs** (one judge call, no history signals) gave 19.8% for the rules and
   33.7% for the hybrid on the tasks that need a change: within the noise of the final ones.
   The rules' clean utility moved from 47.9% to 37.5%, on two tasks that pass only if
@@ -239,6 +251,7 @@ git clone https://github.com/kostas221/agent-action-guard.git
 cd agent-action-guard
 uv sync
 uv run pytest -q                 # no network, no cost
+uv run python adaptive_tests.py --dry-run   # the harder attacks through the rules (no model, no cost)
 cp .env.example .env             # then put your key in .env
 uv run python demo.py            # you approve or reject, under attack (< $0.01)
 uv run python demo.py --user-task user_task_13 --warnings hybrid   # the judge may clear a rule warning
@@ -247,20 +260,42 @@ uv run python demo.py --user-task user_task_13 --warnings hybrid   # the judge m
 A banking repeat takes about 15 to 30 minutes and $0.11 to $0.16. The 0.1.0 tables used
 release commit `c8fed2b` and its traces in `runs/`; the first 0.2 runs went to `runs-v0.2/`,
 the final 0.2.0 runs to `runs-v0.2.0/`. Evaluate changed code in a **fresh output
-directory**, so its runs are never mixed with earlier ones:
+directory**, so its runs are never mixed with earlier ones (here `runs-new/`; the report
+then goes to `results/new/`):
 
 ```bash
-for rep in 1 2 3; do uv run python run_benchmark.py --config guard-hybrid-follow-warnings --suites banking --rep $rep --runs-dir runs-v0.2.0; done
-uv run python report.py --config guard-hybrid-follow-warnings --runs-dir runs-v0.2.0
-uv run python compare.py --runs-dir runs-v0.2.0 --configs guard-follow-warnings guard-hybrid-follow-warnings
-# Release 0.1.0 traces in runs/:
-uv run python compare.py
+for rep in 1 2 3; do uv run python run_benchmark.py --config guard-hybrid-follow-warnings --suites banking --rep $rep --runs-dir runs-new; done
+uv run python report.py --config guard-hybrid-follow-warnings --runs-dir runs-new
+uv run python compare.py --runs-dir runs-new --configs guard-hybrid-follow-warnings
 ```
 
 Configurations: `baseline`, `guard-approve-all`, `guard-follow-warnings`, `guard-oracle`,
 `guard-reject-all`, `guard-judge-follow-warnings`, `guard-hybrid-follow-warnings`.
 Completed runs are skipped on resume; interrupted attempts can incur cost again. Every completed run records its tokens and cost. Keep to at most 3 benchmark processes at once (OpenAI rate limits), one per
 suite and repeat.
+
+### Reproduce the tables
+
+The run traces are not in the repository. Every run behind the tables (5,634 traces,
+15.5 MB) is in `agent-action-guard-traces-v0.2.1.zip` on the
+[v0.2.1 release](https://github.com/kostas221/agent-action-guard/releases/tag/v0.2.1),
+with the two set-aside trials the docs mention. Download it into the repository root and
+recompute every result file from it, with no model call and no cost:
+
+```bash
+uv run python -m zipfile -e agent-action-guard-traces-v0.2.1.zip .
+for c in baseline guard-approve-all guard-follow-warnings guard-oracle guard-reject-all; do uv run python report.py --config $c; done
+for c in guard-follow-warnings guard-judge-follow-warnings guard-hybrid-follow-warnings; do uv run python report.py --config $c --runs-dir runs-v0.2; done
+for c in guard-follow-warnings guard-hybrid-follow-warnings; do uv run python report.py --config $c --runs-dir runs-v0.2.0; done
+uv run python compare.py
+uv run python compare.py --runs-dir runs-v0.2 --configs guard-follow-warnings guard-judge-follow-warnings guard-hybrid-follow-warnings
+uv run python compare.py --runs-dir runs-v0.2.0 --configs guard-follow-warnings guard-hybrid-follow-warnings
+uv run python signals_replay.py
+git status --short results/      # empty: every file comes out byte for byte the same
+```
+
+The judge pilots and the judge's part of the harder tests call the model, so their saved
+results are not recomputed here.
 
 ## Layout
 
@@ -275,7 +310,8 @@ suite and repeat.
 | `action_guard/metrics.py`, `guard_metrics.py`, `attacks.py` | rates with confidence intervals, guard and attack breakdowns |
 | `run_benchmark.py`, `report.py`, `compare.py`, `demo.py` | run, report, compare, try |
 | `docs/` | policy, results, demo runs, the judge's design and results |
-| `results/` | the numbers behind every table, recomputable from the run traces |
+| `results/` | the numbers behind every table, recomputable from the published run traces ([reproduce](#reproduce-the-tables)) |
+| `.github/workflows/tests.yml` | CI: tests and lint on every push, no API key |
 
 ## Limits
 
@@ -293,7 +329,7 @@ suite and repeat.
   Its facts come from literal matching: a value the agent computed from a document (a rent
   increase) looks the same as one it made up.
 - The judge depends on an API. Past a tier-1 account's daily request limit its calls time
-  out, and the hybrid keeps the rules' warnings: as safe, with less utility.
+  out, and a failed call is a vote to keep the rules' warning: as safe, with less utility.
 - No real users were studied. The simulated decisions are not bounds on real users,
   and approvals per task is only a proxy for their burden.
 - A mentioned or previously used value is not necessarily authorized for this task.

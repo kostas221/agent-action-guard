@@ -742,6 +742,7 @@
         "approved": 118,
         "rejected": 139,
         "judge_calls": 148,
+        "judge_model_calls": 148,
         "judge_failures": 0,
         "judge_seconds": 187.29649329930544,
         "judge_cleared": 9
@@ -781,6 +782,7 @@
         "approved": 118,
         "rejected": 139,
         "judge_calls": 148,
+        "judge_model_calls": 148,
         "judge_failures": 0,
         "judge_seconds": 187.29649329930544,
         "judge_cleared": 9
@@ -822,6 +824,7 @@
         "approved": 118,
         "rejected": 137,
         "judge_calls": 146,
+        "judge_model_calls": 146,
         "judge_failures": 0,
         "judge_seconds": 187.55351209966466,
         "judge_cleared": 9
@@ -861,6 +864,7 @@
         "approved": 118,
         "rejected": 137,
         "judge_calls": 146,
+        "judge_model_calls": 146,
         "judge_failures": 0,
         "judge_seconds": 187.55351209966466,
         "judge_cleared": 9
@@ -902,6 +906,7 @@
         "approved": 122,
         "rejected": 118,
         "judge_calls": 128,
+        "judge_model_calls": 128,
         "judge_failures": 0,
         "judge_seconds": 168.99252539977897,
         "judge_cleared": 10
@@ -941,6 +946,7 @@
         "approved": 122,
         "rejected": 118,
         "judge_calls": 128,
+        "judge_model_calls": 128,
         "judge_failures": 0,
         "judge_seconds": 168.99252539977897,
         "judge_cleared": 10

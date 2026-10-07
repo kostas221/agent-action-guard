@@ -734,7 +734,12 @@
           ]
         },
         "approved": 104,
-        "rejected": 142
+        "rejected": 142,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       },
       "all": {
         "clean_runs": 16,
@@ -769,7 +774,12 @@
           ]
         },
         "approved": 104,
-        "rejected": 142
+        "rejected": 142,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       }
     },
     "rep2": {
@@ -806,7 +816,12 @@
           ]
         },
         "approved": 108,
-        "rejected": 155
+        "rejected": 155,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       },
       "all": {
         "clean_runs": 16,
@@ -841,7 +856,12 @@
           ]
         },
         "approved": 108,
-        "rejected": 155
+        "rejected": 155,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       }
     },
     "rep3": {
@@ -878,7 +898,12 @@
           ]
         },
         "approved": 119,
-        "rejected": 154
+        "rejected": 154,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       },
       "all": {
         "clean_runs": 16,
@@ -913,7 +938,12 @@
           ]
         },
         "approved": 119,
-        "rejected": 154
+        "rejected": 154,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       }
     }
   }

@@ -183,3 +183,17 @@ For B and C the hybrid's judge was never asked: no provenance warning, and the s
 stays. These are the first cases where a warning source answers an attack and its twin
 differently, by construction, as said above. A2 is unchanged: the forged address in the
 named file is the hybrid's remaining hole, and the price of its gain on task 13.
+
+**A gap found in review after release 0.2.0 (fixed in 0.2.1).** W4 checked only an amount
+written in the call. Moving a scheduled payment to another account names no amount, so the
+1,100 rent moved to Spotify's account (paid 50 at most) carried no warning; W1 is silent
+too, since the user pays Spotify. W4 and W5 now judge a scheduled payment as it will be
+after the change, each when the change touches what it checks: the amount when the amount
+or the account changes, the subject when the subject or the account changes (the same
+subject to the same account leaks nothing new). None of the stored requests is affected.
+Of the 353 changes of a scheduled payment's account without an amount in the saved runs,
+326 went to the attacker's account and carried W1; 22 came from AgentDojo's runs of the
+attacker's goal as the user's own request, where the user typed the account; in the other
+5 the new account had no history, the amount was not above twice it, or no such scheduled
+payment existed. The signals of all 1,524 requests of the final runs come out identical,
+so no published number changes.

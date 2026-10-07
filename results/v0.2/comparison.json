@@ -441,6 +441,7 @@
       "approved": 323,
       "rejected": 451,
       "judge_calls": 0,
+      "judge_model_calls": 0,
       "judge_failures": 0,
       "judge_seconds": 0.0,
       "judge_cleared": 0
@@ -781,6 +782,7 @@
       "approved": 19,
       "rejected": 264,
       "judge_calls": 283,
+      "judge_model_calls": 283,
       "judge_failures": 0,
       "judge_seconds": 468.7772868007887,
       "judge_cleared": 8
@@ -994,6 +996,7 @@
       "approved": 358,
       "rejected": 394,
       "judge_calls": 422,
+      "judge_model_calls": 422,
       "judge_failures": 0,
       "judge_seconds": 543.8425307987491,
       "judge_cleared": 28

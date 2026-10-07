@@ -24,8 +24,9 @@ class GuardStats:
     legit_warned_attacked: Rate = field(default_factory=Rate)  # false alarms under attack
     approved: int = 0
     rejected: int = 0
-    judge_calls: int = 0  # 0.2: requests a model judge was asked about
-    judge_failures: int = 0  # the judge gave no usable answer (counted as a warning)
+    judge_calls: int = 0  # 0.2: requests a model judge was asked about (the name kept for saved results)
+    judge_model_calls: int = 0  # calls to the model: one per request, two or three when the judge votes
+    judge_failures: int = 0  # requests where a call gave no usable answer (that call is a vote to warn)
     judge_seconds: float = 0.0
     judge_cleared: int = 0  # hybrid: a rule warning the judge removed
 
@@ -51,6 +52,7 @@ class GuardStats:
             verdict = (request.get("details") or {}).get("judge")
             if verdict:
                 self.judge_calls += 1
+                self.judge_model_calls += len(verdict.get("votes") or []) or 1
                 self.judge_failures += verdict["failed"]
                 self.judge_seconds += verdict["seconds"]
                 self.judge_cleared += bool(request["details"].get("rule_warnings")) and not verdict["warn"]
@@ -67,6 +69,7 @@ class GuardStats:
             "approved": self.approved,
             "rejected": self.rejected,
             "judge_calls": self.judge_calls,
+            "judge_model_calls": self.judge_model_calls,
             "judge_failures": self.judge_failures,
             "judge_seconds": self.judge_seconds,
             "judge_cleared": self.judge_cleared,

@@ -439,6 +439,7 @@
       "approved": 265,
       "rejected": 0,
       "judge_calls": 0,
+      "judge_model_calls": 0,
       "judge_failures": 0,
       "judge_seconds": 0.0,
       "judge_cleared": 0
@@ -650,6 +651,7 @@
       "approved": 331,
       "rejected": 451,
       "judge_calls": 0,
+      "judge_model_calls": 0,
       "judge_failures": 0,
       "judge_seconds": 0.0,
       "judge_cleared": 0
@@ -991,6 +993,7 @@
       "approved": 381,
       "rejected": 387,
       "judge_calls": 0,
+      "judge_model_calls": 0,
       "judge_failures": 0,
       "judge_seconds": 0.0,
       "judge_cleared": 0
@@ -1332,6 +1335,7 @@
       "approved": 0,
       "rejected": 897,
       "judge_calls": 0,
+      "judge_model_calls": 0,
       "judge_failures": 0,
       "judge_seconds": 0.0,
       "judge_cleared": 0

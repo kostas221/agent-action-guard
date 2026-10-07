@@ -119,6 +119,9 @@ def main() -> int:
             "guard": guard.to_dict() if guard else None,
             "per_repeat": {rep: by_rep[rep][SUITE].to_dict() for rep in reps},
         }
+    if not payload:  # a fresh clone: run traces are not in the repository
+        print("No runs found: nothing to compare, and the saved results are left as they are.")
+        return 1
 
     print(f"\n## Before and after | {SUITE} | AgentDojo {BENCHMARK_VERSION} | all repeats pooled\n")
     print("| " + " | ".join(COLUMNS) + " |")
@@ -140,13 +143,22 @@ def main() -> int:
     print("\n## Per repeat (how much each number moves by chance)\n")
     print("\n".join(noise))
 
-    if all(len(info["repeats"]) for info in payload.values()):
-        version = Path(args.runs_dir).name.removeprefix("runs-") if args.runs_dir != "runs" else ""
-        out = Path("results") / version / "comparison.json"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        print(f"\nSaved {out}")
+    version = Path(args.runs_dir).name.removeprefix("runs-") if args.runs_dir != "runs" else ""
+    save(payload, [config for config, _ in shown], Path("results") / version / "comparison.json")
     return 0
+
+
+def save(payload: dict, wanted: list[str], out: Path) -> bool:
+    """Write the comparison only when every configuration asked for has runs: a partial table must never
+    replace saved results."""
+    missing = [config for config in wanted if config not in payload]
+    if missing:
+        print(f"\nNot saved: no {SUITE} runs for {', '.join(missing)}; {out} is left as it was.")
+        return False
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"\nSaved {out}")
+    return True
 
 
 if __name__ == "__main__":

@@ -83,3 +83,15 @@ def test_judge_calls_failures_and_cleared_warnings_are_counted():
     stats = summarize_guard([row("user_task_4", None, requests)], attackers)["rep1"]["banking"]
     assert (stats.judge_calls, stats.judge_failures, stats.judge_cleared) == (3, 1, 1)
     assert stats.judge_seconds == 1.5
+    assert stats.judge_model_calls == 3  # one call each: these verdicts carry no votes
+
+
+def test_a_judge_that_votes_counts_each_model_call():
+    def voted(votes: list[bool]) -> dict:
+        verdict = {"warn": sum(votes) * 2 > len(votes), "failed": False, "seconds": 2.0, "votes": votes}
+        details = {"rule_warnings": ["w"], "judge": verdict}
+        return {**request("GB29", warned=True, status="rejected"), "details": details}
+
+    requests = [voted([True, True]), voted([True, False, True])]
+    stats = summarize_guard([row("user_task_4", None, requests)], attackers)["rep1"]["banking"]
+    assert (stats.judge_calls, stats.judge_model_calls) == (2, 5)

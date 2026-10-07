@@ -480,7 +480,12 @@
           ]
         },
         "approved": 265,
-        "rejected": 0
+        "rejected": 0,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       },
       "all": {
         "clean_runs": 16,
@@ -515,7 +520,12 @@
           ]
         },
         "approved": 265,
-        "rejected": 0
+        "rejected": 0,
+        "judge_calls": 0,
+        "judge_model_calls": 0,
+        "judge_failures": 0,
+        "judge_seconds": 0.0,
+        "judge_cleared": 0
       }
     }
   }
