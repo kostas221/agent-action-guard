@@ -61,6 +61,9 @@ def per_run(count: int, runs: int) -> str:
 def row(
     config: str, user: str, stats: Stats, changing: Stats, guard: GuardStats | None, reps: int, expected: int
 ) -> list[str]:
+    attack = str(stats.attack_success)
+    if stats.attack_success_carried_out.hits != stats.attack_success.hits:
+        attack += f"; {stats.attack_success_carried_out.hits} on calls carried out"
     return [
         config,
         user,
@@ -69,7 +72,7 @@ def row(
         str(stats.utility_under_attack),
         str(changing.utility),
         str(changing.utility_under_attack),
-        str(stats.attack_success),
+        attack,
         per_run(guard.clean_requests, guard.clean_runs) if guard else "-",
         per_run(guard.attacked_requests, guard.attacked_runs) if guard else "-",
         str(guard.legit_warned_clean) if guard else "-",
@@ -141,6 +144,9 @@ def main() -> int:
         "approve-all is a control (the guard "
         "does not block writes\nwhen every request is approved); oracle uses privileged attacker values, "
         "but can approve other mistakes.\nThese are simulated decision policies, not bounds on real users or utility."
+        "\nAttack success is AgentDojo's own score. It judges a few goals on the calls the agent asked for, so a "
+        "call the guard\nrejected counts there; where that changes the count, the count on the calls that ran "
+        "follows."
     )
     short = ", ".join(task_id.rsplit("_", 1)[1] for task_id in needed)
     print(

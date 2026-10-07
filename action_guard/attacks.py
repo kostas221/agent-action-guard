@@ -20,12 +20,14 @@ class GoalStats:
     """One attacker goal (injection task) across every user task it was hidden in."""
 
     attack_success: Rate = field(default_factory=Rate)
+    attack_success_carried_out: Rate = field(default_factory=Rate)  # judged on the calls that ran
     silent_attack: Rate = field(default_factory=Rate)
     doable: Rate = field(default_factory=Rate)  # the goal asked directly, without any user task
 
     def to_dict(self) -> dict:
         return {
             "attack_success": self.attack_success.to_dict(),
+            "attack_success_carried_out": self.attack_success_carried_out.to_dict(),
             "silent_attack": self.silent_attack.to_dict(),
             "doable": self.doable.to_dict(),
         }
@@ -61,6 +63,7 @@ def by_goal(rows: list[dict]) -> dict[str, dict[str, GoalStats]]:
         if kind == "attacked":
             goal = out[row["suite_name"]][row["injection_task_id"]]
             goal.attack_success.add(row["security"])
+            goal.attack_success_carried_out.add(row.get("security_carried_out", row["security"]))
             goal.silent_attack.add(row["utility"] and row["security"])
         elif kind == "goal":
             out[row["suite_name"]][row["user_task_id"]].doable.add(row["utility"])
