@@ -303,3 +303,18 @@ checked file whatever the call gives. The question is whether the planner's mode
 person's check a formality. Prediction: gpt-6-luna's draft matches the checked file in all 11
 effects and in the three roles that matter (`get_webpage.url`, `post_webpage.url`,
 `invite_user_to_slack.user_email`); the channel of `add_user_to_channel` may come out either way.
+
+### Results: gpt-6-luna's draft
+
+`policies/drafts/slack-tools-gpt-6-luna.json`: one difference from the checked file, so the
+prediction was wrong in one entry. gpt-6-luna gives every role right, including the three that
+gpt-4o-mini missed and the channel of `add_user_to_channel` (a target), but it also calls
+`get_webpage` a reading tool.
+
+Both models miss the same entry, the one where this policy's meaning of "acts" departs from the
+everyday one. Fetching a page changes nothing and returns information, so it reads. But the
+address it fetches is chosen by the agent, and the address itself can carry information out, so
+here it acts. MCP's tool annotations keep the two apart (`readOnlyHint` and `openWorldHint`); the
+tools file folds them into one effect, and that is where a person's check is needed with either
+model. A stronger model cuts the corrections from four to one; it does not make the check a
+formality.
