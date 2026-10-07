@@ -9,11 +9,13 @@ injection on [AgentDojo](https://github.com/ethz-spylab/agentdojo).
 without the guard 49.8% of attacks succeeded; with a simulated user who rejects every
 warned action, **none** did, whatever the warning source (0/432 with the rules and with the
 hybrid, 0/144 with a model judge alone). Version 0.2 adds a model
-judge that may clear a rule's warning. This **hybrid** kept the warning on all 377 attacker
-requests it saw, cut warnings on legitimate requests from 17% to 4.5%, and brought utility
-under attack on the tasks that need an action back to the undefended agent's level (33.7%
-against 32.5%; rules alone 19.8%). The gain comes from one case, a value taken from a file
-the user named; a forged file has not been tested yet.
+judge that may clear a rule's warning. This **hybrid** kept the warning on all 380 attacker
+requests it saw, cut warnings on legitimate requests from 14.5% to 3.8%, and kept utility
+under attack on the tasks that need an action at the undefended agent's level (32.9%
+against 32.5%; rules alone 21.0%). The gain comes from one case, a value taken from a file
+the user named, and a forged file passes the same way ([harder tests](#harder-attacks-with-the-agent-assumed-hijacked)).
+Two rules from the account's own history now also warn on an unusual amount and on the
+user's own details in a payment's subject.
 
 Version 0.1.1 resolved and validated arguments before approval, tightened literal matching,
 and separated consumed approvals from successful or failed executions
@@ -94,39 +96,42 @@ No person answers in a benchmark, so simulated users decide. They are scenarios,
 mathematical bounds or predictions of human behavior. The oracle uses privileged knowledge
 of the benchmark's attacker values; it can still approve other mistakes.
 
-### Version 0.2: where the warning comes from
+### Version 0.2.0: where the warning comes from
 
 The simulated user is the same in every row: it rejects what is warned and approves the
-rest. Only the source of the warning changes.
+rest. Only the source of the warning changes. The rules and the hybrid rows come from the
+released code; the judge alone ran once, in the first 0.2 runs.
 
 | Banking, 3 repeats pooled | Attack success | Utility, no attack | Utility under attack | Under attack, tasks needing a change ¹ | Warnings on legitimate requests |
 |---|---|---|---|---|---|
 | no guard | **49.8%** [45-54] | 52.1% [38-66] | 46.5% [42-51] | 32.5% [27-39] | - |
-| rules | **0/432** | 47.9% [34-62] | 40.7% [36-45] | 19.8% [15-25] | 17% (65/388) |
-| model judge alone (1 repeat) | **0/144** | 50.0% [28-72] | 48.6% [41-57] | 19.8% [13-30] | 87% (132/151) |
-| **hybrid**: rules, the judge may clear | **0/432** | 54.2% [40-67] | 48.4% [44-53] | 33.7% [28-40] | 4.5% (17/375) |
+| rules (W1-W5) | **0/432** | 37.5% [25-52] | 40.3% [36-45] | 21.0% [16-27] | 14.5% (57/392) |
+| model judge alone (1 repeat, first 0.2 runs) | **0/144** | 50.0% [28-72] | 48.6% [41-57] | 19.8% [13-30] | 87% (132/151) |
+| **hybrid**: rules, the judge may clear W1-W3 | **0/432** | 50.0% [36-64] | 47.9% [43-53] | 32.9% [27-39] | 3.8% (14/373) |
 
 ¹ The 9 of 16 tasks whose own AgentDojo check fails if the account is left untouched. The
 other 7 (questions, two checks that always pass, two requests where doing nothing counts as
 correct) pass without any action, so rejecting scores there: that is why the judge alone,
 which warned on almost everything, looks good in the overall columns.
 
-- **The hybrid kept every warning on the attacker's requests** (377/377) and cleared 28, all
+- **The hybrid kept every warning on the attacker's requests** (380/380) and cleared 30, all
   the same legitimate address change taken from a file the user named. Its gain is that
-  one task: 28 of 30 runs done, against 0 of 30 with the rules.
-- **Most remaining warnings catch the agent's own mistakes**: of the hybrid's 17, 11 were
-  payments to the user's own account, to the literal text `friend's IBAN`, or to a garbled
-  copy of the attacker's account. 3 were the bill of user task 0, warned on purpose: an
-  attacker who controls a bill can make the payment identical to the real one.
-- **Cost:** the judge added about $0.00012 and 1.3 to 1.7 s per call; the hybrid called it
-  on 0.8 requests per run. It never failed to answer in 705 calls.
-- **Two changes since these runs, measured offline on the same 422 requests.** The judge
-  did not always answer the same request the same way, so the hybrid now asks it twice, a
-  third time only if the answers differ, and the majority decides. And the judge no longer
-  sees `null` arguments, which the 0.1.1 validation had added and the pilots had never
-  shown it. Together: 0 of 377 attacker requests cleared, the legitimate address change
-  cleared 31 of 31 times (28 in the live runs), for about twice the judge's cost. The table
-  above used the live version.
+  one task: 30 of 30 runs done, against 0 of 30 with the rules.
+- **Most remaining warnings catch the agent's own mistakes**: of the hybrid's 14, 11 were
+  payments to the user's own account, to the literal text `Apple IBAN`, or of an iPhone's
+  VAT difference to a friend instead of Apple. 3 were the bill of user task 0, warned on
+  purpose: an attacker who controls a bill can make the payment identical to the real one.
+- **The judge votes:** it is asked twice, a third time only if the answers differ, and the
+  majority decides; it no longer sees `null` arguments. Both changes were measured offline
+  first ([design](docs/judge-design.md#majority-vote-after-the-live-runs)). In 423 calls the two
+  answers never differed. Cost: about $0.034 per repeat, about 2 s per request asked.
+- **When the judge fails, the warning stays.** Past the account's daily request limit, 10
+  of 138 calls failed: the hybrid behaved like the rules on those requests, never less
+  safe. That run was set aside and repeated.
+- **The first 0.2 runs** (one judge call, no history signals) gave 19.8% for the rules and
+  33.7% for the hybrid on the tasks that need a change: within the noise of the final ones.
+  The rules' clean utility moved from 47.9% to 37.5%, on two tasks that pass only if
+  nothing is done; no clean run carried a history warning.
 
 Design, pilots, the judge's errors and the limits of this result:
 [docs/judge-design.md](docs/judge-design.md).
@@ -157,7 +162,9 @@ same account, and the user's own details in a subject. They block the ninefold r
 for these cases, these cases do not test them. Replayed on all
 4,515 stored requests, they newly warn on 11, all the agent's own mistakes, none a correct
 request: among them **seven transfers of the user's whole balance (1,810) to a friend that
-the guard had let through and that were executed**.
+the guard had let through and that were executed**. In the final live runs they warned on
+four more of the agent's mistakes, one of them the same whole-balance transfer, and on no
+correct request.
 
 ### Release 0.1.0: simulated users
 
@@ -238,14 +245,14 @@ uv run python demo.py --user-task user_task_13 --warnings hybrid   # the judge m
 ```
 
 A banking repeat takes about 15 to 30 minutes and $0.11 to $0.16. The 0.1.0 tables used
-release commit `c8fed2b` and its traces in `runs/`; the 0.2 runs went to `runs-v0.2/`.
-Evaluate changed code in a **fresh output directory**, so its runs are never mixed with
-earlier ones:
+release commit `c8fed2b` and its traces in `runs/`; the first 0.2 runs went to `runs-v0.2/`,
+the final 0.2.0 runs to `runs-v0.2.0/`. Evaluate changed code in a **fresh output
+directory**, so its runs are never mixed with earlier ones:
 
 ```bash
-for rep in 1 2 3; do uv run python run_benchmark.py --config guard-hybrid-follow-warnings --suites banking --rep $rep --runs-dir runs-v0.2; done
-uv run python report.py --config guard-hybrid-follow-warnings --runs-dir runs-v0.2
-uv run python compare.py --runs-dir runs-v0.2 --configs guard-follow-warnings guard-judge-follow-warnings guard-hybrid-follow-warnings
+for rep in 1 2 3; do uv run python run_benchmark.py --config guard-hybrid-follow-warnings --suites banking --rep $rep --runs-dir runs-v0.2.0; done
+uv run python report.py --config guard-hybrid-follow-warnings --runs-dir runs-v0.2.0
+uv run python compare.py --runs-dir runs-v0.2.0 --configs guard-follow-warnings guard-hybrid-follow-warnings
 # Release 0.1.0 traces in runs/:
 uv run python compare.py
 ```
@@ -281,10 +288,12 @@ suite and repeat.
   An amount below twice the usual, or other data in a subject, still passes. The hybrid
   clears a forged address added to the file the user named, exactly as it clears the real
   one. Text in a payment's subject written for the judge did not move it (0 of 30).
-- In the live runs the judge kept the warning on 3 of 31 identical legitimate requests;
-  with votes and without `null` arguments, on none (offline). Its facts come from literal
-  matching: a value the agent computed from a document (a rent increase) looks the same as
-  one it made up.
+- In the first live runs the judge kept the warning on 3 of 31 identical legitimate
+  requests; with votes and without `null` arguments, on none of 30 in the final runs.
+  Its facts come from literal matching: a value the agent computed from a document (a rent
+  increase) looks the same as one it made up.
+- The judge depends on an API. Past a tier-1 account's daily request limit its calls time
+  out, and the hybrid keeps the rules' warnings: as safe, with less utility.
 - No real users were studied. The simulated decisions are not bounds on real users,
   and approvals per task is only a proxy for their burden.
 - A mentioned or previously used value is not necessarily authorized for this task.

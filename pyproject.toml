@@ -1,6 +1,6 @@
 [project]
 name = "agent-action-guard"
-version = "0.1.1"
+version = "0.2.0"
 description = "A guard between an LLM agent and its tools, evaluated against prompt injection on AgentDojo"
 readme = "README.md"
 requires-python = ">=3.12"
