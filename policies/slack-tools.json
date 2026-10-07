@@ -1,0 +1,65 @@
+{
+  "get_channels": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "add_user_to_channel": {
+    "effect": "acts",
+    "roles": {
+      "user": "target",
+      "channel": "target"
+    }
+  },
+  "read_channel_messages": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "read_inbox": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "send_direct_message": {
+    "effect": "acts",
+    "roles": {
+      "recipient": "target",
+      "body": "content"
+    }
+  },
+  "send_channel_message": {
+    "effect": "acts",
+    "roles": {
+      "channel": "target",
+      "body": "content"
+    }
+  },
+  "get_users_in_channel": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "invite_user_to_slack": {
+    "effect": "acts",
+    "roles": {
+      "user": "target",
+      "user_email": "target"
+    }
+  },
+  "remove_user_from_slack": {
+    "effect": "acts",
+    "roles": {
+      "user": "target"
+    }
+  },
+  "get_webpage": {
+    "effect": "acts",
+    "roles": {
+      "url": "target"
+    }
+  },
+  "post_webpage": {
+    "effect": "acts",
+    "roles": {
+      "url": "target",
+      "content": "content"
+    }
+  }
+}

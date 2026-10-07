@@ -1,11 +1,13 @@
-"""Make a suite's tools file for the automatic policy: one model call on the tools' own descriptions.
+"""Draft a suite's tools file for the automatic policy: one model call on the tools' own descriptions.
 
-    uv run python classify_tools.py --suite slack --dry-run   # what would be sent; no cost
-    uv run python classify_tools.py --suite slack             # one call, well under a cent
+    uv run python classify_tools.py --suite slack --dry-run              # what would be sent; no cost
+    uv run python classify_tools.py --suite slack                        # one call, well under a cent
+    uv run python classify_tools.py --suite slack --model gpt-6-luna     # the same with another model
 
-The file (policies/<suite>-tools.json) says which tools act and what each argument of an acting tool is.
-A person checks it before any run, like a tool's own annotations; an existing file is never replaced.
-docs/automatic-policy.md.
+The draft (policies/drafts/<suite>-tools-<model>.json) says which tools act and what each argument of an
+acting tool is. A person checks it and saves the checked file as policies/<suite>-tools.json, the only one
+the guard reads, like a tool's own annotations. When a checked file exists, the draft is compared with it.
+Nothing is ever replaced. docs/automatic-policy.md.
 """
 
 import argparse
@@ -25,15 +27,28 @@ from action_guard.usage import UsageMeter
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
+def differences(draft: dict, checked: dict) -> list[str]:
+    """Where a draft departs from the checked file: each tool's effect, then each argument's role."""
+    found = []
+    for tool, entry in checked.items():
+        made = draft.get(tool, {"effect": "missing", "roles": {}})
+        if made["effect"] != entry["effect"]:
+            found.append(f"{tool}: {made['effect']}, checked {entry['effect']}")
+        for argument, role in entry["roles"].items():
+            if made["effect"] == entry["effect"] and made["roles"].get(argument) != role:
+                found.append(f"{tool}.{argument}: {made['roles'].get(argument)}, checked {role}")
+    return found
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--suite", required=True)
-    ap.add_argument("--model", default=DEFAULT_MODEL, help="the banking file was made by gpt-4o-mini too")
+    ap.add_argument("--model", default=DEFAULT_MODEL, help="the banking file was drafted by gpt-4o-mini")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
     catalog = tool_catalog(get_suite(BENCHMARK_VERSION, args.suite).tools)
-    out = Path("policies") / f"{args.suite}-tools.json"
+    out = Path("policies") / "drafts" / f"{args.suite}-tools-{args.model}.json"
     if out.exists():
         print(f"{out} exists; delete it first to make a new one")
         return 1
@@ -45,11 +60,20 @@ def main() -> int:
     load_dotenv(".env")
     meter = UsageMeter(max_usd=0.05)
     policy = classify_tools(meter.wrap_client(openai.OpenAI(max_retries=3), role="guard"), args.model, catalog)
-    out.parent.mkdir(exist_ok=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(policy, indent=2), encoding="utf-8")
     for name, entry in policy.items():
         print(f"  {name:24} {entry['effect']:5} {entry['roles']}")
-    print(f"\nSaved {out} (${meter.usd:.5f}). Check it before any run.")
+    print(f"\nSaved {out} (${meter.usd:.5f}).")
+
+    checked = Path("policies") / f"{args.suite}-tools.json"
+    if not checked.exists():
+        print(f"A person checks it and saves the checked file as {checked} before any run.")
+        return 0
+    found = differences(policy, json.loads(checked.read_text(encoding="utf-8")))
+    print(f"\nAgainst the checked {checked}: {len(found)} differences")
+    for line in found:
+        print(f"  {line}")
     return 0
 
 

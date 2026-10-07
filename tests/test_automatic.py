@@ -1,5 +1,8 @@
 """The automatic policy in the guard, on the real AgentDojo Slack and banking data (no network)."""
 
+import json
+from pathlib import Path
+
 import pytest
 from agentdojo.functions_runtime import FunctionCall
 from agentdojo.task_suite.load_suites import get_suite
@@ -13,6 +16,7 @@ from action_guard.pipelines import build_pipeline, guarded_suites
 from action_guard.planner import Plan
 from action_guard.settings import DEFAULT_MODEL
 from action_guard.usage import UsageMeter
+from classify_tools import differences
 
 SLACK = get_suite("v1.2.2", "slack")
 ACTING = {
@@ -71,6 +75,17 @@ def read(function: str, args: dict, text: str) -> ChatToolResultMessage:
         tool_call=FunctionCall(function=function, args=args, id="c1"),
         error=None,
     )
+
+
+def test_the_checked_slack_file_is_the_one_tested_here_and_the_draft_departs_from_it_four_times():
+    assert load_tools("slack") == TOOLS
+    draft = json.loads(Path("policies/drafts/slack-tools-gpt-4o-mini.json").read_text(encoding="utf-8"))
+    assert differences(draft, TOOLS) == [
+        "add_user_to_channel.channel: selector, checked target",
+        "invite_user_to_slack.user_email: content, checked target",
+        "get_webpage: reads, checked acts",
+        "post_webpage.url: selector, checked target",
+    ]
 
 
 def test_tools_that_act_need_approval_and_reading_slack_does_not(env):
