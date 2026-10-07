@@ -21,6 +21,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, field
 
+import openai
 from agentdojo.types import ChatMessage, get_text_content_as_str
 
 from action_guard.banking import appears_in, call_text, source_call, user_supplied, value_forms
@@ -150,13 +151,19 @@ def tool_catalog(tools) -> list[dict]:
 
 
 def ask(client, model: str, system: str, user: str, schema: dict, timeout: float) -> dict:
-    completion = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-        response_format={"type": "json_schema", "json_schema": schema},
-        temperature=0,
-        timeout=timeout,
-    )
+    """Temperature 0 where the model accepts it; models that reason first accept only their default."""
+    request = {
+        "model": model,
+        "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+        "response_format": {"type": "json_schema", "json_schema": schema},
+        "timeout": timeout,
+    }
+    try:
+        completion = client.chat.completions.create(**request, temperature=0)
+    except openai.BadRequestError as exc:
+        if "temperature" not in str(exc):
+            raise
+        completion = client.chat.completions.create(**request)
     return json.loads(completion.choices[0].message.content)
 
 

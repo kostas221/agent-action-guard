@@ -12,6 +12,9 @@ from agentdojo.logging import Logger, TraceLogger
 # USD per 1M tokens: (input, cached input, output). List prices; check them before big runs.
 PRICES = {
     "gpt-4o-mini-2024-07-18": (0.15, 0.075, 0.60),
+    # planners compared in docs/automatic-policy.md; OpenAI's price page on 2026-10-07, undated model names
+    "gpt-6-luna": (0.10, 0.01, 0.50),
+    "gpt-6-sol": (2.00, 0.20, 10.00),
 }
 
 

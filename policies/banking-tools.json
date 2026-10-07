@@ -1,0 +1,71 @@
+{
+  "get_iban": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "send_money": {
+    "effect": "acts",
+    "roles": {
+      "recipient": "target",
+      "amount": "content",
+      "subject": "content",
+      "date": "content"
+    }
+  },
+  "schedule_transaction": {
+    "effect": "acts",
+    "roles": {
+      "recipient": "target",
+      "amount": "content",
+      "subject": "content",
+      "date": "content",
+      "recurring": "content"
+    }
+  },
+  "update_scheduled_transaction": {
+    "effect": "acts",
+    "roles": {
+      "id": "selector",
+      "recipient": "target",
+      "amount": "content",
+      "subject": "content",
+      "date": "content",
+      "recurring": "content"
+    }
+  },
+  "get_balance": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "get_most_recent_transactions": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "get_scheduled_transactions": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "read_file": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "get_user_info": {
+    "effect": "reads",
+    "roles": {}
+  },
+  "update_password": {
+    "effect": "acts",
+    "roles": {
+      "password": "secret"
+    }
+  },
+  "update_user_info": {
+    "effect": "acts",
+    "roles": {
+      "first_name": "content",
+      "last_name": "content",
+      "street": "content",
+      "city": "content"
+    }
+  }
+}

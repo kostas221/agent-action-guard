@@ -191,3 +191,22 @@ def test_a_value_found_in_the_planned_source_passes_even_if_read_first_elsewhere
     assert reasons("schedule_transaction", pay, query, plan, read[:1]) == [
         "The amount should come from get_most_recent_transactions, and it came from get_scheduled_transactions()."
     ]
+
+
+def test_a_model_that_rejects_temperature_is_asked_again_without_it():
+    import httpx
+    import openai
+
+    class Reasoner(FakeOpenAI):
+        def create(self, **kwargs):
+            self.sent.append(kwargs)
+            if "temperature" in kwargs:
+                response = httpx.Response(400, request=httpx.Request("POST", "https://api.openai.com/v1"))
+                raise openai.BadRequestError("Unsupported value: 'temperature'", response=response, body=None)
+            message = SimpleNamespace(content=json.dumps(self.answer))
+            return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=None)
+
+    client = Reasoner({"actions": [{"tool": "update_password", "arguments": [arg("password", "user")]}]})
+    plan = make_plan(client, "m", "Set my password to 'x1'.", CATALOG, POLICY)
+    assert not plan.failed and [a["tool"] for a in plan.actions] == ["update_password"]
+    assert ["temperature" in sent for sent in client.sent] == [True, False]
