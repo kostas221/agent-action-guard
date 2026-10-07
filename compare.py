@@ -18,8 +18,9 @@ from pathlib import Path
 
 from agentdojo.task_suite.load_suites import get_suite
 
-from action_guard.banking import attacker_values, is_attackers
+from action_guard.automatic import load_tools
 from action_guard.guard_metrics import GuardStats, summarize_guard
+from action_guard.labels import attacker_values, is_attackers
 from action_guard.metrics import Stats, expected_runs, load_runs, summarize, tasks_needing_a_change
 from action_guard.settings import BENCHMARK_VERSION
 
@@ -32,6 +33,8 @@ USERS = {
     "guard-reject-all": "rejects everything",
     "guard-judge-follow-warnings": "rejects what is warned (judge)",
     "guard-hybrid-follow-warnings": "rejects what is warned (hybrid)",
+    "guard-auto-follow-warnings": "rejects what is warned (automatic)",
+    "guard-auto-hybrid-follow-warnings": "rejects what is warned (automatic hybrid)",
 }
 RELEASE_0_1 = ("guard-approve-all", "guard-follow-warnings", "guard-oracle", "guard-reject-all")
 COLUMNS = (
@@ -78,33 +81,38 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs-dir", default="runs", help="where the guarded configurations' runs are")
     ap.add_argument("--configs", nargs="+", default=list(RELEASE_0_1), choices=[c for c in USERS if c != "baseline"])
+    ap.add_argument("--suite", default="banking", choices=("banking", "slack"))
     args = ap.parse_args()
+    suite_name = args.suite
     shown = [("baseline", Path("runs"))] + [(config, Path(args.runs_dir)) for config in args.configs]
 
-    suite = get_suite(BENCHMARK_VERSION, SUITE)
+    suite = get_suite(BENCHMARK_VERSION, suite_name)
     expected = expected_runs(suite)
-    needed = tasks_needing_a_change(suite)
+    guarded = []  # the tools a guard can stop: those the suite's tools file says act (none without one)
+    if (Path("policies") / f"{suite_name}-tools.json").exists():
+        guarded = [name for name, entry in load_tools(suite_name).items() if entry["effect"] == "acts"]
+    needed = tasks_needing_a_change(suite, guarded)
     values = cache(lambda injection_task_id: attacker_values(suite, injection_task_id))
 
     def attackers(suite_name: str, injection_task_id: str, request: dict) -> bool:
-        return is_attackers(request["args"], values(injection_task_id))
+        return is_attackers(suite_name, request["args"], values(injection_task_id))
 
     table, noise, payload = [], [], {}
     for config, runs_dir in shown:
         user = USERS[config]
-        rows = [r for r in load_runs(runs_dir, config) if r["suite_name"] == SUITE]
+        rows = [r for r in load_runs(runs_dir, config) if r["suite_name"] == suite_name]
         if not rows:
-            print(f"(no {SUITE} runs for {config} yet)")
+            print(f"(no {suite_name} runs for {config} yet)")
             continue
         by_rep = summarize(rows)
         reps = sorted(by_rep)
         pooled_rows = [{**r, "rep": "pooled"} for r in rows]
-        stats = summarize(pooled_rows)["pooled"][SUITE]
-        changing = summarize([r for r in pooled_rows if r["user_task_id"] in needed])["pooled"][SUITE]
-        guard = summarize_guard(pooled_rows, attackers)["pooled"][SUITE] if config != "baseline" else None
+        stats = summarize(pooled_rows)["pooled"][suite_name]
+        changing = summarize([r for r in pooled_rows if r["user_task_id"] in needed])["pooled"][suite_name]
+        guard = summarize_guard(pooled_rows, attackers)["pooled"][suite_name] if config != "baseline" else None
         table.append(row(config, user, stats, changing, guard, len(reps), expected))
         for key, label in NOISE:
-            listed = " | ".join(f"{rep} {100 * getattr(by_rep[rep][SUITE], key).value:.1f}%" for rep in reps)
+            listed = " | ".join(f"{rep} {100 * getattr(by_rep[rep][suite_name], key).value:.1f}%" for rep in reps)
             noise.append(f"  {config:22} {label:21} {listed}")
         payload[config] = {
             "simulated_user": user,
@@ -117,13 +125,13 @@ def main() -> int:
                 "utility_under_attack": changing.utility_under_attack.to_dict(),
             },
             "guard": guard.to_dict() if guard else None,
-            "per_repeat": {rep: by_rep[rep][SUITE].to_dict() for rep in reps},
+            "per_repeat": {rep: by_rep[rep][suite_name].to_dict() for rep in reps},
         }
     if not payload:  # a fresh clone: run traces are not in the repository
         print("No runs found: nothing to compare, and the saved results are left as they are.")
         return 1
 
-    print(f"\n## Before and after | {SUITE} | AgentDojo {BENCHMARK_VERSION} | all repeats pooled\n")
+    print(f"\n## Before and after | {suite_name} | AgentDojo {BENCHMARK_VERSION} | all repeats pooled\n")
     print("| " + " | ".join(COLUMNS) + " |")
     print("|" + "---|" * len(COLUMNS))
     for cells in table:
@@ -144,7 +152,8 @@ def main() -> int:
     print("\n".join(noise))
 
     version = Path(args.runs_dir).name.removeprefix("runs-") if args.runs_dir != "runs" else ""
-    save(payload, [config for config, _ in shown], Path("results") / version / "comparison.json")
+    name = "comparison.json" if suite_name == "banking" else f"comparison-{suite_name}.json"
+    save(payload, [config for config, _ in shown], Path("results") / version / name)
     return 0
 
 
@@ -153,7 +162,7 @@ def save(payload: dict, wanted: list[str], out: Path) -> bool:
     replace saved results."""
     missing = [config for config in wanted if config not in payload]
     if missing:
-        print(f"\nNot saved: no {SUITE} runs for {', '.join(missing)}; {out} is left as it was.")
+        print(f"\nNot saved: no runs for {', '.join(missing)}; {out} is left as it was.")
         return False
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2), encoding="utf-8")

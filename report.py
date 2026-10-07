@@ -19,8 +19,8 @@ from pathlib import Path
 from agentdojo.task_suite.load_suites import get_suites
 
 from action_guard.attacks import Footprint, by_goal, footprints, goal_changes, reference_tools
-from action_guard.banking import attacker_values, is_attackers
 from action_guard.guard_metrics import GuardStats, summarize_guard
+from action_guard.labels import attacker_values, is_attackers
 from action_guard.metrics import Stats, expected_runs, load_runs, summarize
 from action_guard.pipelines import CONFIGS
 from action_guard.settings import ATTACK, BENCHMARK_VERSION, PUBLISHED_VERSION, SUITES
@@ -173,7 +173,9 @@ def main() -> int:
         values = cache(lambda suite, injection_task_id: attacker_values(task_suites[suite], injection_task_id))
         guard_by_rep = summarize_guard(
             rows,
-            lambda suite, injection_task_id, request: is_attackers(request["args"], values(suite, injection_task_id)),
+            lambda suite, injection_task_id, request: is_attackers(
+                suite, request["args"], values(suite, injection_task_id)
+            ),
         )
         for rep in sorted(guard_by_rep):
             stats = guard_by_rep[rep]

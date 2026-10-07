@@ -8,4 +8,7 @@ JUDGE_MODEL = "gpt-4o-mini-2024-07-18"  # the judge of the 0.2 warnings (docs/ju
 # Majority of up to three calls for the hybrid, adopted after the live runs (which used one call) by the rule
 # stated before the offline replay, results/judge-pilot-3.json. The judge alone keeps one call.
 HYBRID_JUDGE_VOTES = 3
+# 0.3: the model that plans from the request (A1, docs/automatic-policy.md): chosen after the offline replay,
+# where it listed the right actions for 15 of 16 banking tasks, as the large model did, at a twelfth of its price
+PLANNER_MODEL = "gpt-6-luna"
 SUITES = ("workspace", "travel", "banking", "slack")

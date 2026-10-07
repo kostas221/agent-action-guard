@@ -5,51 +5,90 @@
 numbers are comparable with published ones. "guard-<user>" adds the approval guard
 of docs/approval-policy.md, with one simulated user deciding every approval request.
 "guard-<judge|hybrid>-follow-warnings" keeps that guard and user and takes the warning
-from a model judge, alone or on top of the rules (docs/judge-design.md).
-The guard has a policy for banking only.
+from a model judge, alone or on top of the rules (docs/judge-design.md). These have a
+policy written for banking only.
+"guard-auto[-hybrid]-follow-warnings" use the automatic policy (docs/automatic-policy.md):
+any suite with a tools file in policies/, with a plan made from the request (A1) and, in the
+hybrid, the judge in its general wording.
 """
 
 import openai
 from agentdojo.agent_pipeline.agent_pipeline import AgentPipeline, PipelineConfig
 from agentdojo.agent_pipeline.llms.openai_llm import OpenAILLM
+from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.approval import ApproveAll, Approver, FollowWarnings, RejectAll
+from action_guard.automatic import AutomaticPolicy, load_tools
 from action_guard.banking import BankingOracle, BankingPolicy, JudgedBankingPolicy
 from action_guard.guard import Guard, guarded_pipeline
-from action_guard.judge import Judge
-from action_guard.settings import HYBRID_JUDGE_VOTES, JUDGE_MODEL
+from action_guard.judge import GENERAL_KEY_HEADER, GENERAL_SYSTEM, Judge
+from action_guard.planner import make_plan, tool_catalog
+from action_guard.settings import BENCHMARK_VERSION, HYBRID_JUDGE_VOTES, JUDGE_MODEL, PLANNER_MODEL
 from action_guard.usage import PRICES, UsageMeter
 
 APPROVERS = {approver.name: approver for approver in (ApproveAll, RejectAll, FollowWarnings, BankingOracle)}
 JUDGED = tuple(f"guard-{mode}-{FollowWarnings.name}" for mode in JudgedBankingPolicy.MODES)
-CONFIGS = ("baseline", *(f"guard-{name}" for name in APPROVERS), *JUDGED)
-GUARDED_SUITES = ("banking",)
+AUTOMATIC = {f"guard-auto-{FollowWarnings.name}": "rules", f"guard-auto-hybrid-{FollowWarnings.name}": "hybrid"}
+CONFIGS = ("baseline", *(f"guard-{name}" for name in APPROVERS), *JUDGED, *AUTOMATIC)
+AUTOMATIC_SUITES = ("banking", "slack")  # suites with a checked tools file in policies/
+
+
+def guarded_suites(config: str) -> tuple[str, ...]:
+    """The suites a configuration has a policy for (the baseline needs none)."""
+    if config == "baseline":
+        return ()
+    return AUTOMATIC_SUITES if config in AUTOMATIC else ("banking",)
+
+
+def priced(model: str) -> str:
+    if model not in PRICES:
+        raise ValueError(f"No price for {model!r}; add it to PRICES in action_guard/usage.py")
+    return model
 
 
 def agent_llm(model: str, meter: UsageMeter) -> OpenAILLM:
-    if model not in PRICES:
-        raise ValueError(f"No price for {model!r}; add it to PRICES in action_guard/usage.py")
     client = meter.wrap_client(openai.OpenAI(max_retries=6), role="agent")
-    llm = OpenAILLM(client, model)
+    llm = OpenAILLM(client, priced(model))
     llm.name = model  # the attack addresses the model by name, looked up from the pipeline name
     return llm
 
 
 def judged_policy(mode: str, meter: UsageMeter) -> JudgedBankingPolicy:
     """The banking policy with a model judge; its tokens and cost are recorded under the role "guard"."""
-    if JUDGE_MODEL not in PRICES:
-        raise ValueError(f"No price for {JUDGE_MODEL!r}; add it to PRICES in action_guard/usage.py")
     client = meter.wrap_client(openai.OpenAI(max_retries=3), role="guard")
     votes = HYBRID_JUDGE_VOTES if mode == "hybrid" else 1
-    return JudgedBankingPolicy(Judge(client, JUDGE_MODEL, votes=votes), mode)
+    return JudgedBankingPolicy(Judge(client, priced(JUDGE_MODEL), votes=votes), mode)
+
+
+def automatic_policy(suite_name: str, mode: str, meter: UsageMeter) -> AutomaticPolicy:
+    """The automatic policy; the planner's cost is recorded under "planner", the judge's under "guard"."""
+    tools = load_tools(suite_name)
+    catalog = tool_catalog(get_suite(BENCHMARK_VERSION, suite_name).tools)
+    planner_client = meter.wrap_client(openai.OpenAI(max_retries=3), role="planner")
+    model = priced(PLANNER_MODEL)
+
+    def planner(query: str):
+        return make_plan(planner_client, model, query, catalog, tools)
+
+    judge = None
+    if mode == "hybrid":
+        client = meter.wrap_client(openai.OpenAI(max_retries=3), role="guard")
+        judge = Judge(
+            client,
+            priced(JUDGE_MODEL),
+            votes=HYBRID_JUDGE_VOTES,
+            system=GENERAL_SYSTEM,
+            key_header=GENERAL_KEY_HEADER,
+        )
+    return AutomaticPolicy(suite_name, tools, planner, judge, mode)
 
 
 def guarded_agent(model: str, meter: UsageMeter, approver: Approver, policy=None) -> AgentPipeline:
-    """The agent with the banking approval guard; `approver` answers every approval request."""
+    """The agent with the approval guard; `approver` answers every approval request."""
     return guarded_pipeline(agent_llm(model, meter), Guard(policy or BankingPolicy(), approver), name=model)
 
 
-def build_pipeline(config: str, model: str, meter: UsageMeter) -> AgentPipeline:
+def build_pipeline(config: str, model: str, meter: UsageMeter, suite: str = "banking") -> AgentPipeline:
     if config not in CONFIGS:
         raise ValueError(f"Unknown config {config!r}; choose from {CONFIGS}")
     if config == "baseline":
@@ -57,6 +96,10 @@ def build_pipeline(config: str, model: str, meter: UsageMeter) -> AgentPipeline:
         return AgentPipeline.from_config(
             PipelineConfig(llm=llm, model_id=None, defense=None, system_message_name=None, system_message=None)
         )
+    if suite not in guarded_suites(config):
+        raise ValueError(f"{config} has no policy for {suite}")
+    if config in AUTOMATIC:
+        return guarded_agent(model, meter, FollowWarnings(), automatic_policy(suite, AUTOMATIC[config], meter))
     if config in JUDGED:
         mode = config.removeprefix("guard-").split("-", 1)[0]
         return guarded_agent(model, meter, FollowWarnings(), judged_policy(mode, meter))

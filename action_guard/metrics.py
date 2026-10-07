@@ -12,6 +12,7 @@ Three kinds of runs:
 import json
 import math
 from collections import defaultdict
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -173,15 +174,22 @@ def expected_runs(suite) -> int:
     return n_user + n_user * n_injection + n_injection
 
 
-def tasks_needing_a_change(suite) -> list[str]:
-    """User tasks that fail AgentDojo's own check when the environment is left as it was, even with the right answer.
+def tasks_needing_a_change(suite, guarded: Collection[str] = ()) -> list[str]:
+    """User tasks that fail AgentDojo's own check when every guarded action is rejected, even with the right answer.
 
     A guard that blocks every write still passes the other tasks (questions, tasks where the correct answer is
     to do nothing, checks that always pass), so only these show whether it lets the needed actions through.
+    Checked as AgentDojo checks: some tasks are judged on the calls made (Slack), and there the solution's
+    calls to tools that are not guarded still happen; the environment is left as it was.
     """
     needed = []
     for task_id, task in suite.user_tasks.items():
         env = task.init_environment(suite.load_and_inject_default_environment({}))
-        if not task.utility(task.GROUND_TRUTH_OUTPUT, env, env.model_copy(deep=True)):
+        post = env.model_copy(deep=True)
+        reads = [call for call in task.ground_truth(env) if call.function not in guarded]
+        passed = task.utility_from_traces(task.GROUND_TRUTH_OUTPUT, env, post, reads)
+        if passed is None:
+            passed = task.utility(task.GROUND_TRUTH_OUTPUT, env, post)
+        if not passed:
             needed.append(task_id)
     return sorted(needed, key=lambda task_id: int(task_id.rsplit("_", 1)[1]))
