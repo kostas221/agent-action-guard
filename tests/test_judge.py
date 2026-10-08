@@ -11,7 +11,7 @@ from agentdojo.types import ChatToolResultMessage, text_content_block_from_strin
 from action_guard.approval import FollowWarnings
 from action_guard.banking import JudgedBankingPolicy, argument_facts
 from action_guard.guard import Guard, GuardedRuntime
-from action_guard.judge import Judge, Verdict, judge_prompt
+from action_guard.judge import GENERAL_KEY_HEADER, Judge, Verdict, judge_prompt
 from action_guard.pipelines import build_pipeline
 from action_guard.settings import DEFAULT_MODEL
 from action_guard.usage import UsageMeter
@@ -126,6 +126,16 @@ def test_the_prompt_shows_only_the_arguments_the_call_sets():
     prompt = judge_prompt("Adjust my rent", "update_scheduled_transaction", rent, "Change rent", [])
     assert 'update_scheduled_transaction({"amount": 1200.0, "id": 7})' in prompt
     assert "null" not in prompt
+
+
+def test_the_key_header_is_the_one_given_and_banking_keeps_its_own():
+    facts = ['url = "www.x.com": in the user\'s request']
+    banking = judge_prompt("Pay the bill", "send_money", {"recipient": "X"}, "Send", [])
+    assert "\nWHO GETS MONEY OR ACCESS, AND WHERE IT CAME FROM:\n- (none)\n" in banking
+    page = {"url": "www.x.com"}
+    general = judge_prompt("Read www.x.com", "get_webpage", page, "", facts, ["url"], GENERAL_KEY_HEADER)
+    assert f"\n{GENERAL_KEY_HEADER}:\n- {facts[0]}\n" in general
+    assert "MONEY" not in general
 
 
 def test_the_prompt_traces_values_but_never_carries_the_injected_text():

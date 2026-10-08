@@ -144,9 +144,12 @@ def source_of(value, messages: Sequence[ChatMessage]) -> str | None:
 
 
 def named_in(call, query: str) -> bool:
-    """Whether the user's request names the source, e.g. the file in read_file('address-change.txt')."""
+    """Whether the user's request names the source, e.g. the file in read_file('address-change.txt'), or the page in
+    get_webpage('https://www.x.com/') when the user wrote www.x.com."""
     args = call["args"] if isinstance(call, Mapping) else call.args
-    return any(isinstance(arg, str) and user_supplied(arg, query) for arg in args.values())
+    return any(
+        isinstance(arg, str) and any(user_supplied(form, query) for form in value_forms(arg)) for arg in args.values()
+    )
 
 
 def argument_facts(
