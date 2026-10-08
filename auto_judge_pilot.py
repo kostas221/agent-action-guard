@@ -61,6 +61,7 @@ def main() -> int:
         )
     policy = AutomaticPolicy("banking", load_tools("banking"), planner=None, judge=judge, mode="hybrid")
 
+    print(f"{len(items)} saved requests from {args.runs_dir}/{args.config}", flush=True)
     rows = []
     try:
         for number, item in enumerate(items, start=1):
@@ -76,13 +77,13 @@ def main() -> int:
                     "judge": review.details["judge"],
                 }
             )
-            if not args.dry_run and number % 200 == 0:
+            if not args.dry_run and number % 50 == 0:
                 print(f"  {number}/{len(items)}   ${meter.usd:.4f}", flush=True)
     except BudgetExceeded as exc:
         print(f"\n!! {exc}; summarizing the {len(rows)} requests so far")
 
     asked = [r for r in rows if r["a0"]]
-    print(f"{len(rows)} saved requests from {args.runs_dir}/{args.config}; A0 warns on {len(asked)}")
+    print(f"A0 warns on {len(asked)} of them")
     if args.dry_run:
         print("\nExample prompt (the first request A0 warns on):\n")
         print(judge.asked[0] if judge.asked else "(none)")
