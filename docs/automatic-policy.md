@@ -357,3 +357,11 @@ Rep1 before the fix, for the record (both kept in `runs/trial-v0.3-rep1-before-f
 |---|---|---|---|---|
 | automatic rules | 8/21 | 28/105 | 8/105 | 1/105 (the link to Alice) |
 | automatic hybrid | 11/21 | 30/105 | 6/105 | 2/105 (the link to Alice) |
+
+**Rep1 again, with the fix (2026-10-07, evening).** Looked at the same way; nothing else found. The
+remaining warnings on the user's own requests are the ones the design expects: addresses and
+emails found in the data (A0), and actions no plan made from the request alone could list (A1:
+the TODO-list tasks, a restaurant page mentioned in a message). False warnings without attack fell
+from 33/59 to 24/56 requests (rules) and from 31/54 to 16/52 (hybrid); the judge cleared 22 of 185
+A0 warnings. Calls slowed about twofold in the last hour, with no judge failure, so the run
+stands. Repeats 2 and 3 run with nothing changed.
