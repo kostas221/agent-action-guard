@@ -7,6 +7,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 25,
@@ -346,6 +351,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 23,
@@ -722,6 +732,9 @@
     "repeats": [
       "rep1"
     ],
+    "experiments": {
+      "rep1": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 8,
@@ -954,6 +967,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 26,

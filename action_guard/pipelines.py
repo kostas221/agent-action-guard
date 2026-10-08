@@ -9,7 +9,10 @@ from a model judge, alone or on top of the rules (docs/judge-design.md). These h
 policy written for banking only.
 "guard-auto[-hybrid]-follow-warnings" use the automatic policy (docs/automatic-policy.md):
 any suite with a tools file in policies/, with a plan made from the request (A1) and, in the
-hybrid, the judge in its general wording.
+hybrid, the judge in its general wording. "guard-auto-hybrid-mini-follow-warnings" is the hybrid
+with the agent's own model as the planner, so that every model in it is the agent's.
+"defense-<name>" are AgentDojo's own defenses on the same undefended agent, for a comparison in
+the same conditions (transformers_pi_detector is left out: it runs a local classifier model).
 """
 
 import openai
@@ -23,19 +26,24 @@ from action_guard.banking import BankingOracle, BankingPolicy, JudgedBankingPoli
 from action_guard.guard import Guard, guarded_pipeline
 from action_guard.judge import GENERAL_KEY_HEADER, GENERAL_SYSTEM, Judge
 from action_guard.planner import make_plan, tool_catalog
-from action_guard.settings import BENCHMARK_VERSION, HYBRID_JUDGE_VOTES, JUDGE_MODEL, PLANNER_MODEL
+from action_guard.settings import BENCHMARK_VERSION, DEFAULT_MODEL, HYBRID_JUDGE_VOTES, JUDGE_MODEL, PLANNER_MODEL
 from action_guard.usage import PRICES, UsageMeter
 
 APPROVERS = {approver.name: approver for approver in (ApproveAll, RejectAll, FollowWarnings, BankingOracle)}
 JUDGED = tuple(f"guard-{mode}-{FollowWarnings.name}" for mode in JudgedBankingPolicy.MODES)
-AUTOMATIC = {f"guard-auto-{FollowWarnings.name}": "rules", f"guard-auto-hybrid-{FollowWarnings.name}": "hybrid"}
-CONFIGS = ("baseline", *(f"guard-{name}" for name in APPROVERS), *JUDGED, *AUTOMATIC)
+AUTOMATIC = {  # config: (mode, planner model)
+    f"guard-auto-{FollowWarnings.name}": ("rules", PLANNER_MODEL),
+    f"guard-auto-hybrid-{FollowWarnings.name}": ("hybrid", PLANNER_MODEL),
+    f"guard-auto-hybrid-mini-{FollowWarnings.name}": ("hybrid", DEFAULT_MODEL),
+}
+DEFENSES = {f"defense-{name}": name for name in ("tool_filter", "repeat_user_prompt", "spotlighting_with_delimiting")}
+CONFIGS = ("baseline", *(f"guard-{name}" for name in APPROVERS), *JUDGED, *AUTOMATIC, *DEFENSES)
 AUTOMATIC_SUITES = ("banking", "slack")  # suites with a checked tools file in policies/
 
 
 def guarded_suites(config: str) -> tuple[str, ...]:
-    """The suites a configuration has a policy for (the baseline needs none)."""
-    if config == "baseline":
+    """The suites a configuration's guard has a policy for; () without a guard (it runs on any suite)."""
+    if not config.startswith("guard-"):
         return ()
     return AUTOMATIC_SUITES if config in AUTOMATIC else ("banking",)
 
@@ -60,12 +68,14 @@ def judged_policy(mode: str, meter: UsageMeter) -> JudgedBankingPolicy:
     return JudgedBankingPolicy(Judge(client, priced(JUDGE_MODEL), votes=votes), mode)
 
 
-def automatic_policy(suite_name: str, mode: str, meter: UsageMeter) -> AutomaticPolicy:
+def automatic_policy(
+    suite_name: str, mode: str, meter: UsageMeter, planner_model: str = PLANNER_MODEL
+) -> AutomaticPolicy:
     """The automatic policy; the planner's cost is recorded under "planner", the judge's under "guard"."""
     tools = load_tools(suite_name)
     catalog = tool_catalog(get_suite(BENCHMARK_VERSION, suite_name).tools)
     planner_client = meter.wrap_client(openai.OpenAI(max_retries=3), role="planner")
-    model = priced(PLANNER_MODEL)
+    model = priced(planner_model)
 
     def planner(query: str):
         return make_plan(planner_client, model, query, catalog, tools)
@@ -91,15 +101,18 @@ def guarded_agent(model: str, meter: UsageMeter, approver: Approver, policy=None
 def build_pipeline(config: str, model: str, meter: UsageMeter, suite: str = "banking") -> AgentPipeline:
     if config not in CONFIGS:
         raise ValueError(f"Unknown config {config!r}; choose from {CONFIGS}")
-    if config == "baseline":
+    if config == "baseline" or config in DEFENSES:
         llm = agent_llm(model, meter)
+        defense = DEFENSES.get(config)
         return AgentPipeline.from_config(
-            PipelineConfig(llm=llm, model_id=None, defense=None, system_message_name=None, system_message=None)
+            PipelineConfig(llm=llm, model_id=None, defense=defense, system_message_name=None, system_message=None)
         )
     if suite not in guarded_suites(config):
         raise ValueError(f"{config} has no policy for {suite}")
     if config in AUTOMATIC:
-        return guarded_agent(model, meter, FollowWarnings(), automatic_policy(suite, AUTOMATIC[config], meter))
+        mode, planner_model = AUTOMATIC[config]
+        policy = automatic_policy(suite, mode, meter, planner_model)
+        return guarded_agent(model, meter, FollowWarnings(), policy)
     if config in JUDGED:
         mode = config.removeprefix("guard-").split("-", 1)[0]
         return guarded_agent(model, meter, FollowWarnings(), judged_policy(mode, meter))

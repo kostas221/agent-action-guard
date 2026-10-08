@@ -4,17 +4,20 @@ import json
 from pathlib import Path
 
 import pytest
-from agentdojo.functions_runtime import FunctionCall
+from agentdojo.attacks.base_attacks import get_model_name_from_pipeline
+from agentdojo.functions_runtime import FunctionCall, FunctionsRuntime
 from agentdojo.task_suite.load_suites import get_suite
 from agentdojo.types import ChatToolResultMessage, text_content_block_from_string
 
+from action_guard.approval import FollowWarnings
 from action_guard.automatic import UNEXPECTED, AutomaticPolicy, load_tools
+from action_guard.guard import Guard, GuardedRuntime
 from action_guard.judge import Verdict
 from action_guard.labels import attacker_values, is_attackers
 from action_guard.metrics import tasks_needing_a_change
-from action_guard.pipelines import build_pipeline, guarded_suites
+from action_guard.pipelines import AUTOMATIC, build_pipeline, guarded_suites
 from action_guard.planner import Plan
-from action_guard.settings import DEFAULT_MODEL
+from action_guard.settings import DEFAULT_MODEL, PLANNER_MODEL
 from action_guard.usage import UsageMeter
 from classify_tools import differences
 
@@ -221,3 +224,51 @@ def test_the_automatic_configurations_cover_banking_and_slack_and_the_others_ban
         build_pipeline("guard-follow-warnings", DEFAULT_MODEL, UsageMeter(max_usd=0.01), "slack")
     pipeline = build_pipeline("guard-auto-hybrid-follow-warnings", DEFAULT_MODEL, UsageMeter(max_usd=0.01), "banking")
     assert pipeline.name == DEFAULT_MODEL
+
+
+def test_the_mini_hybrid_plans_with_the_agents_own_model(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "not-used")
+    assert AUTOMATIC["guard-auto-hybrid-mini-follow-warnings"] == ("hybrid", DEFAULT_MODEL)
+    assert AUTOMATIC["guard-auto-hybrid-follow-warnings"] == ("hybrid", PLANNER_MODEL)
+    pipeline = build_pipeline("guard-auto-hybrid-mini-follow-warnings", DEFAULT_MODEL, UsageMeter(0.01), "banking")
+    assert pipeline.name == DEFAULT_MODEL
+
+
+@pytest.mark.parametrize("defense", ["tool_filter", "repeat_user_prompt", "spotlighting_with_delimiting"])
+def test_agentdojos_defenses_run_on_the_undefended_agent_on_any_suite(monkeypatch, defense):
+    monkeypatch.setenv("OPENAI_API_KEY", "not-used")
+    assert guarded_suites(f"defense-{defense}") == ()
+    pipeline = build_pipeline(f"defense-{defense}", DEFAULT_MODEL, UsageMeter(0.01), "slack")
+    assert pipeline.name == f"{DEFAULT_MODEL}-{defense}"  # the attack still finds the model's name in it
+    assert get_model_name_from_pipeline(pipeline) == get_model_name_from_pipeline(
+        build_pipeline("baseline", DEFAULT_MODEL, UsageMeter(0.01), "slack")
+    )
+
+
+@pytest.mark.parametrize("password", ["", "new-pass-77 ", " new-pass-77", "https://new-pass-77", "new-pass-77/"])
+def test_a_password_other_than_the_one_typed_is_warned_and_not_set(password):
+    banking = get_suite("v1.2.2", "banking")
+    env = banking.load_and_inject_default_environment({})
+    guard = Guard(AutomaticPolicy("banking", load_tools("banking")), FollowWarnings())
+    guard.start_task(env)
+    query = "Update my password to 'new-pass-77'."
+    runtime = GuardedRuntime(FunctionsRuntime(banking.tools), guard, query, [])
+    before = env.user_account.password
+    _, error = runtime.run_function(env, "update_password", {"password": password})
+    [record] = guard.records()
+    assert record["warnings"] == ["You did not type this password."] and record["status"] == "rejected"
+    assert error and env.user_account.password == before
+    runtime.run_function(env, "update_password", {"password": "new-pass-77"})  # the typed one still goes through
+    assert env.user_account.password == "new-pass-77"
+
+
+def test_an_empty_target_is_warned_and_the_judge_is_told_it_is_empty():
+    banking = get_suite("v1.2.2", "banking")
+    env = banking.load_and_inject_default_environment({})
+    judge = FakeJudge(warn=True)
+    policy = AutomaticPolicy("banking", load_tools("banking"), Planner("send_money"), judge, mode="hybrid")
+    policy.start_task(env)
+    pay = {"recipient": "", "amount": 5.0, "subject": "x", "date": "2022-04-01"}
+    review = policy.review("send_money", pay, "Pay my bill", env, [])
+    assert review.details["rule_warnings"] == [NOT_KNOWN.format("recipient")]
+    assert 'recipient = "": empty (the call sets an empty value)' in judge.asked[0][2]

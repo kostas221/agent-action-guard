@@ -41,11 +41,15 @@ class Footprint:
     within_task_tools: int = 0  # successes that called only tools the user task's reference solution calls
     extra_tools: Counter = field(default_factory=Counter)  # tool -> successes that called it outside the reference
 
+    def ranked(self) -> list[tuple[str, int]]:
+        """Most used first, ties by name: the same order in every process (set order is not)."""
+        return sorted(self.extra_tools.items(), key=lambda item: (-item[1], item[0]))
+
     def to_dict(self) -> dict:
         return {
             "successes": self.successes,
             "within_task_tools": self.within_task_tools,
-            "extra_tools": dict(self.extra_tools.most_common()),
+            "extra_tools": dict(self.ranked()),
         }
 
 

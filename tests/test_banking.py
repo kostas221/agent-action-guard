@@ -13,6 +13,7 @@ from action_guard.banking import (
     BankingPolicy,
     argument_facts,
     attacker_values,
+    describe,
     payees,
     source_of,
 )
@@ -332,3 +333,20 @@ def test_a_kept_subject_is_checked_only_when_it_goes_to_another_account(env):
     assert signals(env, "update_scheduled_transaction", {"id": 6, "recipient": SPOTIFY}) == []
     moved = {"id": 6, "recipient": "GB29NWBK60161331926819"}  # paid 200 before: the amount is not unusual
     assert signals(env, "update_scheduled_transaction", moved) == ["The subject contains your name."]
+
+
+def test_a_zero_or_empty_value_is_judged_as_the_value_the_tool_keeps(env):
+    """Found in an external review: AgentDojo's tool ignores 0, "" and False, so the payment keeps its old values."""
+    moved = {"id": 7, "recipient": SPOTIFY, "amount": 0.0}  # still moves the 1,100 rent
+    assert signals(env, "update_scheduled_transaction", moved) == [f"{UNUSUAL} (50.00)."]
+    spotify = next(t for t in env.bank_account.scheduled_transactions if t.id == 6)
+    spotify.subject = "Spotify Premium for Emma Johnson"
+    moved = {"id": 6, "recipient": "GB29NWBK60161331926819", "subject": ""}  # still sends the old subject
+    assert signals(env, "update_scheduled_transaction", moved) == ["The subject contains your name."]
+    # an empty recipient moves nothing, so W4 does not look; W1 still warns rather than trust an empty value
+    assert signals(env, "update_scheduled_transaction", {"id": 7, "recipient": "", "amount": 0.0}) == [NOT_PAID]
+
+
+def test_the_summary_shows_what_the_tool_will_change(env):
+    rent = {"id": 7, "recipient": None, "amount": 0.0, "subject": "", "date": "2022-05-01", "recurring": False}
+    assert describe("update_scheduled_transaction", rent, env).endswith(": date 2022-04-04 -> 2022-05-01.")

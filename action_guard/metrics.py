@@ -12,15 +12,17 @@ Three kinds of runs:
 import json
 import math
 from collections import defaultdict
-from collections.abc import Collection, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
 
+from agentdojo.agent_pipeline.agent_pipeline import DEFENSES as AGENTDOJO_DEFENSES
 from agentdojo.base_tasks import BaseInjectionTask
 from agentdojo.functions_runtime import FunctionCall
 from agentdojo.task_suite.load_suites import get_suite
 
+from action_guard.manifest import label
 from action_guard.settings import ATTACK, BENCHMARK_VERSION
 
 TRACE_KEYS = (
@@ -35,6 +37,8 @@ TRACE_KEYS = (
     "duration",
     "usage",
     "guard",  # approval requests and decisions, in guarded configurations only
+    "benchmark_version",
+    "agentdojo_package_version",
 )
 
 
@@ -184,7 +188,7 @@ def security_carried_out(trace: dict) -> bool | None:
 
 def load_runs(runs_dir: Path, config: str) -> list[dict]:
     """One row per saved trace of `config`, with the repeat it belongs to; other attacks are skipped."""
-    rows = []
+    rows, experiments = [], {}
     for path in sorted((runs_dir / config).glob("rep*/*/*/*/*/*.json")):
         try:
             trace = json.loads(path.read_text(encoding="utf-8"))
@@ -193,12 +197,15 @@ def load_runs(runs_dir: Path, config: str) -> list[dict]:
         if trace.get("attack_type") not in (None, ATTACK):
             continue
         rep = path.relative_to(runs_dir / config).parts[0]
+        if rep not in experiments:
+            experiments[rep] = label(runs_dir / config / rep)
         rows.append(
             {
                 "rep": rep,
                 **{key: trace.get(key) for key in TRACE_KEYS},
                 "tools": called_tools(trace),
                 "security_carried_out": security_carried_out(trace),
+                "experiment": experiments[rep],
             }
         )
     return rows
@@ -211,6 +218,53 @@ def summarize(rows: list[dict]) -> dict[str, dict[str, Stats]]:
         out[row["rep"]][row["suite_name"]].add(row)
         out[row["rep"]]["all"].add(row)
     return out
+
+
+def agent_model(pipeline_name: str) -> str:
+    """The agent's model in a pipeline name: AgentDojo names a pipeline with one of its defenses <model>-<defense>."""
+    for defense in AGENTDOJO_DEFENSES:
+        if pipeline_name.endswith(f"-{defense}"):
+            return pipeline_name.removesuffix(f"-{defense}")
+    return pipeline_name
+
+
+def setup_problems(groups: Mapping[str, list[dict]]) -> list[str]:
+    """Why configurations cannot share one table: a different agent model, benchmark or AgentDojo version, or a
+    benchmark other than the one the tasks are scored with here. Planners and judges may differ: they are what is
+    compared. The attack is the same by construction (load_runs keeps one attack)."""
+    setups = {
+        config: sorted(
+            {
+                (agent_model(r["pipeline_name"]), r.get("benchmark_version"), r.get("agentdojo_package_version"))
+                for r in rows
+            }
+        )
+        for config, rows in groups.items()
+    }
+    problems = []
+    if len({tuple(s) for s in setups.values()}) > 1:
+        problems.append("different setups: " + "; ".join(f"{config} {s}" for config, s in setups.items()))
+    versions = {v for s in setups.values() for _, v, _ in s}
+    if versions - {BENCHMARK_VERSION}:
+        problems.append(
+            f"benchmark {', '.join(sorted(map(str, versions)))}, but tasks are scored with {BENCHMARK_VERSION}"
+        )
+    return problems
+
+
+def experiment_problems(rows: list[dict]) -> list[str]:
+    """Why rows cannot be pooled as one experiment: more than one agent pipeline, benchmark or AgentDojo version, or
+    repeats made with different run files (manifest.py); legacy repeats pool only with legacy ones."""
+    problems = []
+    for key in ("pipeline_name", "benchmark_version", "agentdojo_package_version"):
+        values = sorted({str(row.get(key)) for row in rows})
+        if len(values) > 1:
+            problems.append(f"more than one {key}: {', '.join(values)}")
+    by_rep = {row["rep"]: row.get("experiment") for row in rows}
+    if len(set(by_rep.values())) > 1:
+        listed = ", ".join(f"{rep} {(experiment or '?')[:12]}" for rep, experiment in sorted(by_rep.items()))
+        problems.append(f"repeats from different experiments: {listed}")
+    return problems
 
 
 def expected_runs(suite) -> int:

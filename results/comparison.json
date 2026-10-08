@@ -7,6 +7,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 25,
@@ -344,6 +349,9 @@
     "repeats": [
       "rep1"
     ],
+    "experiments": {
+      "rep1": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 10,
@@ -574,6 +582,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 19,
@@ -952,6 +965,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 26,
@@ -1330,6 +1348,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 18,

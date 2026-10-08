@@ -22,6 +22,7 @@ from agentdojo.logging import Logger, OutputLogger
 from agentdojo.task_suite.load_suites import get_suite
 from dotenv import load_dotenv
 
+from action_guard.manifest import ExperimentMismatch, check_or_write
 from action_guard.metrics import expected_runs
 from action_guard.pipelines import CONFIGS, build_pipeline, guarded_suites
 from action_guard.settings import ATTACK, BENCHMARK_VERSION, DEFAULT_MODEL, SUITES
@@ -58,13 +59,19 @@ def main() -> int:
     ap.add_argument("--runs-dir", default="runs")
     args = ap.parse_args()
     allowed = guarded_suites(args.config)
-    if args.config != "baseline" and set(args.suites) - set(allowed):
+    if args.config.startswith("guard-") and set(args.suites) - set(allowed):
         ap.error(f"{args.config} has an approval policy for {', '.join(allowed)} only: choose --suites among them")
 
     load_dotenv(".env")
     meter = UsageMeter(args.max_usd)
     logdir = Path(args.runs_dir) / args.config / f"rep{args.rep}"
+    try:  # one repeat is one experiment: resumed only with the same setup and the same run files
+        experiment = check_or_write(logdir, args.config, args.model)
+    except ExperimentMismatch as exc:
+        print(f"!! {exc}")
+        return 2
     print(f"{args.config} | {args.model} | AgentDojo {BENCHMARK_VERSION} | attack {ATTACK} | saving to {logdir}/")
+    print(f"experiment {experiment['fingerprint'][:12]} (manifest.json in that folder)")
 
     started = time.time()
     try:

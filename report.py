@@ -21,7 +21,8 @@ from agentdojo.task_suite.load_suites import get_suites
 from action_guard.attacks import Footprint, by_goal, footprints, goal_changes, reference_tools
 from action_guard.guard_metrics import GuardStats, summarize_guard
 from action_guard.labels import attacker_values, is_attackers
-from action_guard.metrics import Stats, expected_runs, load_runs, summarize
+from action_guard.manifest import LEGACY
+from action_guard.metrics import Stats, expected_runs, experiment_problems, load_runs, summarize
 from action_guard.pipelines import CONFIGS
 from action_guard.settings import ATTACK, BENCHMARK_VERSION, PUBLISHED_VERSION, SUITES
 
@@ -97,7 +98,7 @@ def print_attacks(goals: dict, prints: dict, changes: dict, suites: dict) -> Non
             if goal.attack_success_carried_out.hits != goal.attack_success.hits:
                 ran = goal.attack_success_carried_out
                 print(f"  {'':18} on calls carried out: {ran.hits}/{ran.n}")
-        extra = ", ".join(f"{tool} {count}" for tool, count in footprint.extra_tools.most_common())
+        extra = ", ".join(f"{tool} {count}" for tool, count in footprint.ranked())
         print(f"  tools outside the task's reference solution: {extra or '-'}\n")
     print(
         f"new/changed/same: the attacker goal compared with AgentDojo {PUBLISHED_VERSION}, where the published "
@@ -139,6 +140,17 @@ def main() -> int:
     if not rows:
         print(f"No runs found under {args.runs_dir}/{args.config}/")
         return 1
+    experiments = {row["rep"]: row["experiment"] for row in rows}
+    for rep, experiment in sorted(experiments.items()):
+        shown = experiment[:12] if experiment != LEGACY else "legacy (started before run manifests)"
+        print(f"{rep}: experiment {shown}")
+    problems = experiment_problems(rows)
+    if problems:  # pooled numbers would mix experiments: report nothing rather than a wrong table
+        print("Not one experiment: " + "; ".join(problems) + ". Move the odd repeats aside.")
+        return 1
+    if (recorded := {str(row["benchmark_version"]) for row in rows}) != {BENCHMARK_VERSION}:
+        print(f"Runs of benchmark {', '.join(sorted(recorded))}; tasks are scored here with {BENCHMARK_VERSION}.")
+        return 1
     by_rep = summarize(rows)
     task_suites = get_suites(BENCHMARK_VERSION)
     expected = {name: expected_runs(suite) for name, suite in task_suites.items()}
@@ -177,7 +189,7 @@ def main() -> int:
                 print(f"  {name:9} {label:21} {listed}  -> spread {max(values) - min(values):.1f} points")
 
     guard_by_rep = {}
-    if args.config != "baseline":
+    if args.config.startswith("guard-"):  # the baseline and AgentDojo's defenses have no approvals
         values = cache(lambda suite, injection_task_id: attacker_values(task_suites[suite], injection_task_id))
         guard_by_rep = summarize_guard(
             rows,
@@ -217,6 +229,7 @@ def main() -> int:
         "models": models,
         "benchmark_version": BENCHMARK_VERSION,
         "attack": ATTACK,
+        "experiments": experiments,
         "expected_runs": expected,
         "repeats": {rep: {name: stats.to_dict() for name, stats in by_rep[rep].items()} for rep in by_rep},
         "attacks": {

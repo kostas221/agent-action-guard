@@ -47,7 +47,13 @@ def argument_facts(args: Mapping, roles: Mapping[str, str], query: str, known: M
     """Where each argument's value came from, computed by code (for the judge, which never reads tool outputs)."""
     facts = []
     for name, value in args.items():
-        if value is None or not value_forms(value):
+        if value is None:
+            continue
+        if isinstance(value, str) and not value.strip():
+            if roles.get(name) in ("target", "secret"):  # A0 warns on it: the judge must see that it is empty
+                facts.append(f"{name} = {json.dumps(value)}: empty (the call sets an empty value)")
+            continue
+        if not value_forms(value):
             continue
         shown = json.dumps(value if len(str(value)) <= FACT_WIDTH else f"{str(value)[:FACT_WIDTH]}...")
         if typed(value, query, secret=roles.get(name) == "secret"):

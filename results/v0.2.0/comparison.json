@@ -7,6 +7,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 25,
@@ -346,6 +351,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 18,
@@ -724,6 +734,11 @@
       "rep2",
       "rep3"
     ],
+    "experiments": {
+      "rep1": "legacy",
+      "rep2": "legacy",
+      "rep3": "legacy"
+    },
     "pooled": {
       "utility": {
         "hits": 24,

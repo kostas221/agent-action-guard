@@ -231,15 +231,20 @@ def make_plan(client, model: str, query: str, catalog: list[dict], policy: Mappi
 
 
 def typed(value, query: str, *, secret: bool = False) -> bool:
+    """Whether the user wrote the value. A secret must be written exactly as it will be set: no spaces trimmed,
+    no other written form (`https://pass` or `pass/` is not the password `pass`); an empty value is never typed."""
+    if secret:
+        return isinstance(value, str) and value != "" and user_supplied(value, query, password=True)
     return any(user_supplied(form, query, password=secret) for form in value_forms(value))
 
 
 def floor_reasons(tool: str, args: Mapping, query: str, roles: Mapping[str, str], known: Callable[[str], bool]):
-    """A0: who or where the action goes, and secrets; the same for every plan."""
+    """A0: who or where the action goes, and secrets; the same for every plan. Only an argument the call leaves
+    out (None) is skipped: an empty target or secret is neither typed nor known, so it is warned."""
     reasons = []
     for name, role in roles.items():
         value = args.get(name)
-        if value is None or not value_forms(value):
+        if value is None:
             continue
         if role == "target" and not typed(value, query) and not known(str(value)):
             reasons.append(f"The {name} is not in your message and is not someone you already deal with.")

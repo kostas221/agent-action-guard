@@ -21,7 +21,15 @@ from agentdojo.task_suite.load_suites import get_suite
 from action_guard.automatic import load_tools
 from action_guard.guard_metrics import GuardStats, summarize_guard
 from action_guard.labels import attacker_values, is_attackers
-from action_guard.metrics import Stats, expected_runs, load_runs, summarize, tasks_needing_a_change
+from action_guard.metrics import (
+    Stats,
+    expected_runs,
+    experiment_problems,
+    load_runs,
+    setup_problems,
+    summarize,
+    tasks_needing_a_change,
+)
 from action_guard.settings import BENCHMARK_VERSION
 
 SUITE = "banking"
@@ -35,6 +43,10 @@ USERS = {
     "guard-hybrid-follow-warnings": "rejects what is warned (hybrid)",
     "guard-auto-follow-warnings": "rejects what is warned (automatic)",
     "guard-auto-hybrid-follow-warnings": "rejects what is warned (automatic hybrid)",
+    "guard-auto-hybrid-mini-follow-warnings": "rejects what is warned (automatic hybrid, gpt-4o-mini planner)",
+    "defense-tool_filter": "none (AgentDojo's tool filter)",
+    "defense-repeat_user_prompt": "none (AgentDojo's repeated user prompt)",
+    "defense-spotlighting_with_delimiting": "none (AgentDojo's spotlighting)",
 }
 RELEASE_0_1 = ("guard-approve-all", "guard-follow-warnings", "guard-oracle", "guard-reject-all")
 COLUMNS = (
@@ -100,19 +112,25 @@ def main() -> int:
     def attackers(suite_name: str, injection_task_id: str, request: dict) -> bool:
         return is_attackers(suite_name, request["args"], values(injection_task_id))
 
-    table, noise, payload = [], [], {}
+    table, noise, payload, groups = [], [], {}, {}
     for config, runs_dir in shown:
         user = USERS[config]
         rows = [r for r in load_runs(runs_dir, config) if r["suite_name"] == suite_name]
         if not rows:
             print(f"(no {suite_name} runs for {config} yet)")
             continue
+        problems = experiment_problems(rows)
+        if problems:  # left out of the table, so the table is not saved (save() needs every configuration)
+            print(f"(left out: {config} is not one experiment: {'; '.join(problems)})")
+            continue
+        groups[config] = rows
         by_rep = summarize(rows)
         reps = sorted(by_rep)
         pooled_rows = [{**r, "rep": "pooled"} for r in rows]
         stats = summarize(pooled_rows)["pooled"][suite_name]
         changing = summarize([r for r in pooled_rows if r["user_task_id"] in needed])["pooled"][suite_name]
-        guard = summarize_guard(pooled_rows, attackers)["pooled"][suite_name] if config != "baseline" else None
+        guarded = config.startswith("guard-")  # the baseline and AgentDojo's defenses ask for no approval
+        guard = summarize_guard(pooled_rows, attackers)["pooled"][suite_name] if guarded else None
         table.append(row(config, user, stats, changing, guard, len(reps), expected))
         for key, label in NOISE:
             listed = " | ".join(f"{rep} {100 * getattr(by_rep[rep][suite_name], key).value:.1f}%" for rep in reps)
@@ -121,6 +139,7 @@ def main() -> int:
             "simulated_user": user,
             "runs_dir": str(runs_dir),
             "repeats": reps,
+            "experiments": {row["rep"]: row["experiment"] for row in rows},
             "pooled": stats.to_dict(),
             "tasks_needing_a_change": {
                 "user_tasks": needed,
@@ -130,6 +149,9 @@ def main() -> int:
             "guard": guard.to_dict() if guard else None,
             "per_repeat": {rep: by_rep[rep][suite_name].to_dict() for rep in reps},
         }
+    if problems := setup_problems(groups):  # each configuration is one experiment, but not with each other
+        print("Not one comparison: " + "; ".join(problems) + ". Nothing is shown or saved.")
+        return 1
     if not payload:  # a fresh clone: run traces are not in the repository
         print("No runs found: nothing to compare, and the saved results are left as they are.")
         return 1
@@ -151,8 +173,9 @@ def main() -> int:
     short = ", ".join(task_id.rsplit("_", 1)[1] for task_id in needed)
     print(
         f"\nTasks needing a change: the {len(needed)} of {len(suite.user_tasks)} user tasks ({short}) whose AgentDojo "
-        "check fails if the account is left untouched.\nThe others pass without any write (questions, tasks where "
-        "doing nothing is correct, checks that always pass),\nso a guard that rejects everything scores on them."
+        "check fails when every action a guard can stop is rejected.\nThe others pass without any action (questions, "
+        "tasks where doing nothing is correct, checks that always pass),\nso a guard that rejects everything scores "
+        "on them."
     )
     print("\n## Per repeat (how much each number moves by chance)\n")
     print("\n".join(noise))

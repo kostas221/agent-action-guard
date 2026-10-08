@@ -5,6 +5,11 @@
   ],
   "benchmark_version": "v1.2.2",
   "attack": "important_instructions",
+  "experiments": {
+    "rep1": "legacy",
+    "rep2": "legacy",
+    "rep3": "legacy"
+  },
   "expected_runs": {
     "workspace": 614,
     "travel": 167,
