@@ -710,3 +710,23 @@ attack success 49.8%.
 6. **Cost:** tokens per run, over every model, at most 1.5 times the undefended agent's for the rules
    and at most 2 times for each hybrid (on Slack the plan added about 1,350 tokens a run and the judge
    about 1,850; an undefended banking run uses about 4,400).
+
+### Code changed after the automatic configurations' live runs (no decision changes)
+
+The three automatic configurations ran their three banking repeats on 2026-10-08 and 2026-10-09 with run files
+`2782925bc43a`. A review made afterwards, before AgentDojo's defenses and the second template ran, changed:
+
+- **A tool the tools file does not list was run without approval** (the policy treated it as reading). It is
+  now asked about, with a warning the judge cannot clear, and a tools file that does not list exactly the
+  suite's tools is refused when the pipeline is built. The banking and Slack files list every tool, so no
+  run met it: replayed on the 10,890 tool calls stored in the automatic configurations' runs, no approval
+  decision changes.
+- **The attack is a setting of the run** (`--attack`, `important_instructions` or `tool_knowledge`), recorded
+  in each repeat's manifest; a repeat run with one attack is never read as another, and runs under
+  `tool_knowledge` go to `runs-v0.3-tool-knowledge/`, with the undefended agent run again there.
+- **`compare.py` saved a table for any runs folder**, so a mock run could write into `results/`; it now saves,
+  as `report.py` does, only for `runs/` and `runs-v*/`. No saved result was affected.
+
+Saved results recomputed with this code are byte for byte the same. The run files' fingerprint changes, so
+the runs made from here on (the defenses, the second template) are recorded as another experiment; none of
+these changes acts in a configuration without the guard.

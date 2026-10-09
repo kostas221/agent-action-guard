@@ -1,5 +1,6 @@
 import json
 import sys
+from pathlib import Path
 
 import compare
 
@@ -28,3 +29,12 @@ def test_a_partial_comparison_is_never_saved(tmp_path):
     assert json.loads(out.read_text(encoding="utf-8")) == SAVED
     assert compare.save(partial, ["baseline", "guard-follow-warnings"], out)
     assert json.loads(out.read_text(encoding="utf-8")) == partial
+
+
+def test_only_real_runs_are_saved_into_results():
+    assert compare.results_path(Path("runs"), "banking") == Path("results/comparison.json")
+    assert compare.results_path(Path("runs-v0.3"), "slack") == Path("results/v0.3/comparison-slack.json")
+    assert compare.results_path(Path("runs-v0.3-tool-knowledge"), "banking") == Path(
+        "results/v0.3-tool-knowledge/comparison.json"
+    )
+    assert compare.results_path(Path("dist/tk"), "banking") is None  # a mock run never reaches results/

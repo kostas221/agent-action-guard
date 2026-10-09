@@ -3,8 +3,11 @@
     uv run python compare.py                                     # release 0.1.0 runs in runs/
     uv run python compare.py --runs-dir runs-v0.2 --configs guard-follow-warnings \
         guard-judge-follow-warnings guard-hybrid-follow-warnings   # 0.2: rules vs judge vs hybrid
+    uv run python compare.py --runs-dir runs-v0.3-tool-knowledge --attack tool_knowledge --configs \
+        guard-auto-follow-warnings guard-auto-hybrid-follow-warnings guard-auto-hybrid-mini-follow-warnings
 
-The baseline always comes from runs/: the undefended agent is the same in every version.
+Under the main attack the baseline comes from runs/: the undefended agent is the same in every version.
+Under another attack it was run again with that attack, into the same runs dir as the guarded configurations.
 Each configuration pools all its repeats (rates with 95% confidence intervals); the
 per-repeat values below the table show how much a number moves by chance alone.
 Nothing is re-run or paid. Writes results/comparison.json, or results/<version>/comparison.json.
@@ -30,7 +33,7 @@ from action_guard.metrics import (
     summarize,
     tasks_needing_a_change,
 )
-from action_guard.settings import BENCHMARK_VERSION
+from action_guard.settings import ATTACK, ATTACKS, BENCHMARK_VERSION
 
 SUITE = "banking"
 USERS = {
@@ -97,9 +100,13 @@ def main() -> int:
     ap.add_argument("--runs-dir", default="runs", help="where the guarded configurations' runs are")
     ap.add_argument("--configs", nargs="+", default=list(RELEASE_0_1), choices=[c for c in USERS if c != "baseline"])
     ap.add_argument("--suite", default="banking", choices=("banking", "slack"))
+    ap.add_argument("--attack", default=ATTACK, choices=ATTACKS)
     args = ap.parse_args()
+    if args.attack != ATTACK and Path(args.runs_dir) == Path("runs"):
+        ap.error(f"runs/ holds runs under {ATTACK} only: give the --runs-dir the {args.attack} runs went to")
     suite_name = args.suite
-    shown = [("baseline", Path("runs"))] + [(config, Path(args.runs_dir)) for config in args.configs]
+    baseline_dir = Path("runs") if args.attack == ATTACK else Path(args.runs_dir)
+    shown = [("baseline", baseline_dir)] + [(config, Path(args.runs_dir)) for config in args.configs]
 
     suite = get_suite(BENCHMARK_VERSION, suite_name)
     expected = expected_runs(suite)
@@ -115,7 +122,11 @@ def main() -> int:
     table, noise, payload, groups = [], [], {}, {}
     for config, runs_dir in shown:
         user = USERS[config]
-        rows = [r for r in load_runs(runs_dir, config) if r["suite_name"] == suite_name]
+        try:
+            rows = [r for r in load_runs(runs_dir, config, args.attack) if r["suite_name"] == suite_name]
+        except ValueError as exc:  # a repeat run with another attack
+            print(exc)
+            return 1
         if not rows:
             print(f"(no {suite_name} runs for {config} yet)")
             continue
@@ -156,7 +167,8 @@ def main() -> int:
         print("No runs found: nothing to compare, and the saved results are left as they are.")
         return 1
 
-    print(f"\n## Before and after | {suite_name} | AgentDojo {BENCHMARK_VERSION} | all repeats pooled\n")
+    setup = f"{suite_name} | AgentDojo {BENCHMARK_VERSION} | {args.attack}"
+    print(f"\n## Before and after | {setup} | all repeats pooled\n")
     print("| " + " | ".join(COLUMNS) + " |")
     print("|" + "---|" * len(COLUMNS))
     for cells in table:
@@ -180,10 +192,21 @@ def main() -> int:
     print("\n## Per repeat (how much each number moves by chance)\n")
     print("\n".join(noise))
 
-    version = Path(args.runs_dir).name.removeprefix("runs-") if args.runs_dir != "runs" else ""
-    name = "comparison.json" if suite_name == "banking" else f"comparison-{suite_name}.json"
-    save(payload, [config for config, _ in shown], Path("results") / version / name)
+    out = results_path(Path(args.runs_dir), suite_name)
+    if out is None:
+        print(f"\nNot saved: results/ holds comparisons of runs/ and runs-v*/ only, and this one read {args.runs_dir}/")
+        return 0
+    save(payload, [config for config, _ in shown], out)
     return 0
+
+
+def results_path(runs_dir: Path, suite_name: str) -> Path | None:
+    """results/[<version>/]comparison[-<suite>].json for runs/ and runs-v*/; None for trials and mock runs."""
+    if runs_dir != Path("runs") and not runs_dir.name.startswith("runs-v"):
+        return None
+    version = runs_dir.name.removeprefix("runs-") if runs_dir != Path("runs") else ""
+    name = "comparison.json" if suite_name == "banking" else f"comparison-{suite_name}.json"
+    return Path("results") / version / name
 
 
 def save(payload: dict, wanted: list[str], out: Path) -> bool:

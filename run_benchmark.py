@@ -5,6 +5,8 @@
     uv run python run_benchmark.py --suites banking --rep 2   # a repeat, to measure run-to-run noise
     uv run python run_benchmark.py --config guard-follow-warnings --suites banking   # with the approval guard
     uv run python run_benchmark.py --config guard-oracle --suites banking --user-tasks user_task_2   # a quick trial
+    uv run python run_benchmark.py --suites banking --attack tool_knowledge --runs-dir runs-v0.3-tool-knowledge
+                                                              # the second attack template, in its own runs dir
 
 Interrupted runs resume where they stopped: finished runs are skipped, never paid twice.
 Suites can run in parallel from separate terminals, since each one writes its own files.
@@ -25,7 +27,7 @@ from dotenv import load_dotenv
 from action_guard.manifest import ExperimentMismatch, check_or_write
 from action_guard.metrics import expected_runs
 from action_guard.pipelines import CONFIGS, build_pipeline, guarded_suites
-from action_guard.settings import ATTACK, BENCHMARK_VERSION, DEFAULT_MODEL, SUITES
+from action_guard.settings import ATTACK, ATTACKS, BENCHMARK_VERSION, DEFAULT_MODEL, SUITES
 from action_guard.usage import BudgetExceeded, UsageMeter
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)  # pydantic v1-style calls inside AgentDojo
@@ -57,20 +59,24 @@ def main() -> int:
     ap.add_argument("--user-tasks", nargs="+", help="only these user tasks (a quick trial); the rest can run later")
     ap.add_argument("--max-usd", type=float, default=3.0, help="hard stop on spend for this invocation")
     ap.add_argument("--runs-dir", default="runs")
+    ap.add_argument("--attack", default=ATTACK, choices=ATTACKS, help="AgentDojo attack; another one needs --runs-dir")
     args = ap.parse_args()
     allowed = guarded_suites(args.config)
     if args.config.startswith("guard-") and set(args.suites) - set(allowed):
         ap.error(f"{args.config} has an approval policy for {', '.join(allowed)} only: choose --suites among them")
+    if args.attack != ATTACK and args.runs_dir == "runs":  # runs/ holds the main results, under one attack
+        example = f"runs-v0.3-{args.attack.replace('_', '-')}"
+        ap.error(f"--attack {args.attack} needs its own --runs-dir (for example {example})")
 
     load_dotenv(".env")
     meter = UsageMeter(args.max_usd)
     logdir = Path(args.runs_dir) / args.config / f"rep{args.rep}"
     try:  # one repeat is one experiment: resumed only with the same setup and the same run files
-        experiment = check_or_write(logdir, args.config, args.model)
+        experiment = check_or_write(logdir, args.config, args.model, attack=args.attack)
     except ExperimentMismatch as exc:
         print(f"!! {exc}")
         return 2
-    print(f"{args.config} | {args.model} | AgentDojo {BENCHMARK_VERSION} | attack {ATTACK} | saving to {logdir}/")
+    print(f"{args.config} | {args.model} | AgentDojo {BENCHMARK_VERSION} | attack {args.attack} | saving to {logdir}/")
     print(f"experiment {experiment['fingerprint'][:12]} (manifest.json in that folder)")
 
     started = time.time()
@@ -89,7 +95,7 @@ def main() -> int:
                     user_tasks=args.user_tasks,
                     benchmark_version=BENCHMARK_VERSION,
                 )
-                attack = load_attack(ATTACK, suite, pipeline)
+                attack = load_attack(args.attack, suite, pipeline)
                 benchmark_suite_with_injections(
                     pipeline,
                     suite,
@@ -106,7 +112,8 @@ def main() -> int:
 
     minutes = (time.time() - started) / 60
     print(f"\nDone in {minutes:.1f} min: ${meter.usd:.4f} spent in this invocation ({meter.calls} LLM calls).")
-    print(f"Results: uv run python report.py --config {args.config}")
+    attack = f" --attack {args.attack}" if args.attack != ATTACK else ""
+    print(f"Results: uv run python report.py --config {args.config} --runs-dir {args.runs_dir}{attack}")
     return 0
 
 

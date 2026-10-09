@@ -22,7 +22,7 @@ from agentdojo.base_tasks import BaseInjectionTask
 from agentdojo.functions_runtime import FunctionCall
 from agentdojo.task_suite.load_suites import get_suite
 
-from action_guard.manifest import label
+from action_guard.manifest import attack_of, label
 from action_guard.settings import ATTACK, BENCHMARK_VERSION
 
 TRACE_KEYS = (
@@ -186,18 +186,21 @@ def security_carried_out(trace: dict) -> bool | None:
     return trace["security"] if judged is None else judged
 
 
-def load_runs(runs_dir: Path, config: str) -> list[dict]:
-    """One row per saved trace of `config`, with the repeat it belongs to; other attacks are skipped."""
+def load_runs(runs_dir: Path, config: str, attack: str = ATTACK) -> list[dict]:
+    """One row per saved trace of `config`, with the repeat it belongs to; runs under another attack are skipped."""
     rows, experiments = [], {}
     for path in sorted((runs_dir / config).glob("rep*/*/*/*/*/*.json")):
         try:
             trace = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:  # AgentDojo is rewriting this trace right now (benchmark still running)
             continue
-        if trace.get("attack_type") not in (None, ATTACK):
+        if trace.get("attack_type") not in (None, attack):
             continue
         rep = path.relative_to(runs_dir / config).parts[0]
         if rep not in experiments:
+            ran = attack_of(runs_dir / config / rep)
+            if ran not in (None, attack):  # else its attacked runs would be skipped and its clean runs kept, silently
+                raise ValueError(f"{runs_dir / config / rep} was run with the attack {ran}: pass --attack {ran}")
             experiments[rep] = label(runs_dir / config / rep)
         rows.append(
             {

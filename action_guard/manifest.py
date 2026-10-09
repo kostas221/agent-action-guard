@@ -51,7 +51,7 @@ def fingerprint(hashes: dict[str, str]) -> str:
     return hashlib.sha256("\n".join(f"{p}:{h}" for p, h in sorted(hashes.items())).encode()).hexdigest()
 
 
-def identity(config: str, model: str) -> dict:
+def identity(config: str, model: str, attack: str = ATTACK) -> dict:
     from action_guard.pipelines import AUTOMATIC, DEFENSES, JUDGED
 
     planner = AUTOMATIC[config][1] if config in AUTOMATIC else None
@@ -64,7 +64,7 @@ def identity(config: str, model: str) -> dict:
         "judge_votes": (HYBRID_JUDGE_VOTES if "hybrid" in config else 1) if judged else None,
         "agentdojo_defense": DEFENSES.get(config),
         "benchmark_version": BENCHMARK_VERSION,
-        "attack": ATTACK,
+        "attack": attack,
         "agentdojo_version": version("agentdojo"),
     }
 
@@ -78,12 +78,12 @@ def git_commit(root: Path = Path(".")) -> tuple[str | None, bool]:
     return commit.stdout.strip(), bool(status.stdout.strip())
 
 
-def build(config: str, model: str, root: Path = Path(".")) -> dict:
+def build(config: str, model: str, root: Path = Path("."), *, attack: str = ATTACK) -> dict:
     hashes = file_hashes(root)
     commit, dirty = git_commit(root)
     return {
         "schema": 1,
-        "identity": identity(config, model),
+        "identity": identity(config, model, attack),
         "fingerprint": fingerprint(hashes),
         "files": hashes,
         "git_commit": commit,
@@ -101,9 +101,9 @@ def has_runs(logdir: Path) -> bool:
     return any(logdir.glob("*/*/*/*/*.json"))  # <pipeline>/<suite>/<task>/<attack>/<injection>.json
 
 
-def check_or_write(logdir: Path, config: str, model: str, root: Path = Path(".")) -> dict:
+def check_or_write(logdir: Path, config: str, model: str, root: Path = Path("."), *, attack: str = ATTACK) -> dict:
     """Start a repeat with a manifest, or resume one only with the same identity and the same run files."""
-    current = build(config, model, root)
+    current = build(config, model, root, attack=attack)
     saved = load(logdir)
     if saved is None:
         if has_runs(logdir):
@@ -135,3 +135,9 @@ def label(logdir: Path) -> str:
     """The repeat's experiment: its fingerprint, or "legacy" for a folder made before manifests."""
     saved = load(logdir)
     return saved["fingerprint"] if saved else LEGACY
+
+
+def attack_of(logdir: Path) -> str | None:
+    """The attack a repeat was run with, or None for a folder made before manifests (all under the main attack)."""
+    saved = load(logdir)
+    return saved.get("identity", {}).get("attack") if saved else None

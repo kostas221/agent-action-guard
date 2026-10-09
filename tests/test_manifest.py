@@ -102,3 +102,19 @@ def test_configurations_share_a_table_only_with_the_same_agent_and_benchmark():
     assert setup_problems({**same, HYBRID: [row("gpt-6-luna")]})[0].startswith("different setups")
     problems = setup_problems({"baseline": [row(DEFAULT_MODEL, "v1")], HYBRID: [row(DEFAULT_MODEL, "v1")]})
     assert problems == ["benchmark v1, but tasks are scored with v1.2.2"]
+
+
+def test_another_attack_is_another_experiment(tmp_path, root):
+    logdir = tmp_path / "runs" / HYBRID / "rep1"
+    assert check_or_write(logdir, HYBRID, DEFAULT_MODEL, root)["identity"]["attack"] == "important_instructions"
+    with pytest.raises(ExperimentMismatch, match="attack: 'important_instructions' -> 'tool_knowledge'"):
+        check_or_write(logdir, HYBRID, DEFAULT_MODEL, root, attack="tool_knowledge")
+
+
+def test_a_repeat_run_under_another_attack_is_read_only_under_that_attack(tmp_path):
+    write(tmp_path, "rep1", DEFAULT_MODEL)  # its clean run would be kept, and every attacked run skipped
+    manifest = {"fingerprint": "f" * 64, "identity": {"attack": "tool_knowledge"}}
+    (tmp_path / "baseline" / "rep1" / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="pass --attack tool_knowledge"):
+        load_runs(tmp_path, "baseline")
+    assert len(load_runs(tmp_path, "baseline", "tool_knowledge")) == 1

@@ -2,6 +2,7 @@
 
     uv run python report.py                       # baseline
     uv run python report.py --config guard-follow-warnings
+    uv run python report.py --runs-dir runs-v0.3-tool-knowledge --attack tool_knowledge   # the second template
 
 Prints one table per repeat and, when there are several repeats, how much each
 number moves between them (an observed spread, not a significance threshold).
@@ -24,7 +25,7 @@ from action_guard.labels import attacker_values, is_attackers
 from action_guard.manifest import LEGACY
 from action_guard.metrics import Stats, expected_runs, experiment_problems, load_runs, summarize
 from action_guard.pipelines import CONFIGS
-from action_guard.settings import ATTACK, BENCHMARK_VERSION, PUBLISHED_VERSION, SUITES
+from action_guard.settings import ATTACK, ATTACKS, BENCHMARK_VERSION, PUBLISHED_VERSION, SUITES
 
 COLUMNS = (
     "suite",
@@ -134,9 +135,16 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default="baseline", choices=CONFIGS)
     ap.add_argument("--runs-dir", default="runs")
+    ap.add_argument("--attack", default=ATTACK, choices=ATTACKS)
     args = ap.parse_args()
+    if args.attack != ATTACK and Path(args.runs_dir) == Path("runs"):
+        ap.error(f"runs/ holds runs under {ATTACK} only: give the --runs-dir the {args.attack} runs went to")
 
-    rows = load_runs(Path(args.runs_dir), args.config)
+    try:
+        rows = load_runs(Path(args.runs_dir), args.config, args.attack)
+    except ValueError as exc:  # a repeat run with another attack
+        print(exc)
+        return 1
     if not rows:
         print(f"No runs found under {args.runs_dir}/{args.config}/")
         return 1
@@ -161,7 +169,7 @@ def main() -> int:
         suites = [name for name in SUITES if name in stats]
         table = [table_row(name, stats[name], expected[name]) for name in suites]
         table.append(table_row("all", stats["all"], sum(expected[name] for name in suites)))
-        print(f"\n## {args.config} | {rep} | {', '.join(models)} | AgentDojo {BENCHMARK_VERSION} | {ATTACK}\n")
+        print(f"\n## {args.config} | {rep} | {', '.join(models)} | AgentDojo {BENCHMARK_VERSION} | {args.attack}\n")
         print(markdown(table))
         print(
             "\nPercentages with 95% confidence intervals [low-high]. API errors count as attack success "
@@ -228,7 +236,7 @@ def main() -> int:
         "config": args.config,
         "models": models,
         "benchmark_version": BENCHMARK_VERSION,
-        "attack": ATTACK,
+        "attack": args.attack,
         "experiments": experiments,
         "expected_runs": expected,
         "repeats": {rep: {name: stats.to_dict() for name, stats in by_rep[rep].items()} for rep in by_rep},
