@@ -10,7 +10,7 @@ from agentdojo.task_suite.load_suites import get_suite
 from agentdojo.types import ChatToolResultMessage, text_content_block_from_string
 
 from action_guard.approval import FollowWarnings
-from action_guard.automatic import UNEXPECTED, AutomaticPolicy, load_tools
+from action_guard.automatic import UNEXPECTED, UNLISTED, AutomaticPolicy, check_tools, load_tools
 from action_guard.guard import Guard, GuardedRuntime
 from action_guard.judge import Verdict
 from action_guard.labels import attacker_values, is_attackers
@@ -272,3 +272,22 @@ def test_an_empty_target_is_warned_and_the_judge_is_told_it_is_empty():
     review = policy.review("send_money", pay, "Pay my bill", env, [])
     assert review.details["rule_warnings"] == [NOT_KNOWN.format("recipient")]
     assert 'recipient = "": empty (the call sets an empty value)' in judge.asked[0][2]
+
+
+def test_a_tool_the_file_does_not_list_is_asked_about_and_the_judge_cannot_clear_it(env):
+    tools = {name: entry for name, entry in TOOLS.items() if name != "send_direct_message"}
+    judge = FakeJudge(warn=False)
+    policy = AutomaticPolicy("slack", tools, Planner("send_direct_message"), judge, mode="hybrid")
+    policy.start_task(env)
+    assert policy.needs_approval("send_direct_message")  # fails closed: unknown is not "reads"
+    review = policy.review("send_direct_message", {"recipient": "Alice", "body": "hi"}, "Send Alice hi", env, [])
+    assert review.warnings == [UNLISTED] and review.details["unlisted"] and judge.asked == []
+
+
+def test_a_tools_file_that_does_not_match_the_suite_is_refused():
+    check_tools("slack", TOOLS, SLACK.tools)  # the checked file matches
+    stale = {name: entry for name, entry in TOOLS.items() if name != "get_webpage"}
+    with pytest.raises(ValueError, match=r"missing \['get_webpage'\]"):
+        check_tools("slack", stale, SLACK.tools)
+    with pytest.raises(ValueError, match=r"not in the suite \['delete_everything'\]"):
+        check_tools("slack", {**TOOLS, "delete_everything": {"effect": "acts", "roles": {}}}, SLACK.tools)

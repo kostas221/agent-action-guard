@@ -21,7 +21,7 @@ from agentdojo.agent_pipeline.llms.openai_llm import OpenAILLM
 from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.approval import ApproveAll, Approver, FollowWarnings, RejectAll
-from action_guard.automatic import AutomaticPolicy, load_tools
+from action_guard.automatic import AutomaticPolicy, check_tools, load_tools
 from action_guard.banking import BankingOracle, BankingPolicy, JudgedBankingPolicy
 from action_guard.guard import Guard, guarded_pipeline
 from action_guard.judge import GENERAL_KEY_HEADER, GENERAL_SYSTEM, Judge
@@ -73,7 +73,9 @@ def automatic_policy(
 ) -> AutomaticPolicy:
     """The automatic policy; the planner's cost is recorded under "planner", the judge's under "guard"."""
     tools = load_tools(suite_name)
-    catalog = tool_catalog(get_suite(BENCHMARK_VERSION, suite_name).tools)
+    suite_tools = get_suite(BENCHMARK_VERSION, suite_name).tools
+    check_tools(suite_name, tools, suite_tools)
+    catalog = tool_catalog(suite_tools)
     planner_client = meter.wrap_client(openai.OpenAI(max_retries=3), role="planner")
     model = priced(planner_model)
 

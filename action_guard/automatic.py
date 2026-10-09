@@ -22,6 +22,7 @@ from action_guard.banking import Review, call_text, named_in, payees, source_cal
 from action_guard.planner import Plan, floor_reasons, typed
 
 UNEXPECTED = "This action is not part of what you asked."
+UNLISTED = "This tool is not in the checked list of tools: nothing is known about what it does."
 FACT_WIDTH = 80
 
 
@@ -41,6 +42,16 @@ CONTACTS: dict[str, Callable] = {"banking": banking_contacts, "slack": slack_con
 
 def load_tools(suite_name: str, directory: str = "policies") -> dict:
     return json.loads(Path(directory, f"{suite_name}-tools.json").read_text(encoding="utf-8"))
+
+
+def check_tools(suite_name: str, tools: Mapping[str, dict], suite_tools) -> None:
+    """The tools file must describe exactly the suite's tools: a run with a stale file is refused, not guessed."""
+    listed, actual = set(tools), {tool.name for tool in suite_tools}
+    if listed != actual:
+        raise ValueError(
+            f"policies/{suite_name}-tools.json does not match the suite: missing {sorted(actual - listed)}, "
+            f"not in the suite {sorted(listed - actual)}. Run classify_tools.py and check the file again."
+        )
 
 
 def argument_facts(args: Mapping, roles: Mapping[str, str], query: str, known: Mapping[str, str], messages) -> list:
@@ -100,7 +111,8 @@ class AutomaticPolicy:
         self.plan, self.plan_query = None, None
 
     def needs_approval(self, tool: str) -> bool:
-        return self.tools.get(tool, {}).get("effect") == "acts"
+        entry = self.tools.get(tool)
+        return entry is None or entry.get("effect") == "acts"  # a tool the file does not list is asked about
 
     def plan_for(self, query: str) -> Plan | None:
         if self.planner is None:
@@ -110,6 +122,11 @@ class AutomaticPolicy:
         return self.plan
 
     def review(self, tool: str, args: Mapping, query: str, env, messages: Sequence[ChatMessage]) -> Review:
+        if tool not in self.tools:  # warned, and not a rule warning: the judge cannot clear it
+            given = {name: value for name, value in args.items() if value is not None}
+            summary = f"{tool}({json.dumps(given, ensure_ascii=False)})"
+            details = {"warning_source": self.name, "rule_warnings": [], "plan_warnings": [], "unlisted": True}
+            return Review(summary=summary, warnings=[UNLISTED], details={**details, "plan": None, "judge": None})
         known = self.known if self.known is not None else self.contacts(env)
         roles = self.tools[tool]["roles"]
         a0 = floor_reasons(tool, args, query, roles, lambda value: value in known)
