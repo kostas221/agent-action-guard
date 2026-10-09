@@ -19,3 +19,6 @@ runs-v*/
 # Local notes for the coding assistant, kept out of the public repo
 CLAUDE.md
 AGENTS.md
+.claude/
+.agents/
+.codex/
