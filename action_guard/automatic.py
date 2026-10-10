@@ -75,6 +75,11 @@ def banking_settings(env) -> dict[str, str]:
 SETTINGS: dict[str, Callable] = {"banking": banking_settings}
 
 
+def named(value, query: str) -> bool:
+    """Whether the user named this person or item, in any case ("remove alice" names Alice)."""
+    return typed(value, query) or typed(str(value).lower(), query.lower())
+
+
 def load_tools(suite_name: str, directory: str = "policies") -> dict:
     return json.loads(Path(directory, f"{suite_name}-tools.json").read_text(encoding="utf-8"))
 
@@ -172,15 +177,23 @@ class AutomaticPolicy:
         current = self.current if self.current is not None else (self.settings(env) if self.settings else None)
         entry = self.tools[tool]
         roles = entry["roles"]
-        a0 = floor_reasons(tool, args, query, roles, lambda value: value in known, current)
+        updates = "selector" in roles.values()
+        # A tool that changes an existing item leaves a field as it was when given an empty value (AgentDojo's
+        # update tools test `if value:`), and so does a setting: that is no change, so nothing to warn about.
+        checked = {
+            name: value
+            for name, value in args.items()
+            if not (value == "" and (roles.get(name) == "setting" or (updates and roles.get(name) == "target")))
+        }
+        a0 = floor_reasons(tool, checked, query, roles, lambda value: value in known, current)
         targets = {name: role for name, role in roles.items() if role == "target"}
         redirect = []  # who or where an existing item goes, moved to someone new: never cleared (fix 1)
-        if "selector" in roles.values():
-            redirect = floor_reasons(tool, args, query, targets, lambda value: value in known)
+        if updates:
+            redirect = floor_reasons(tool, checked, query, targets, lambda value: value in known)
         irreversible = []  # what cannot be undone needs every target typed, known or not: never cleared (fix 5)
         if entry.get("irreversible"):
             given_targets = [name for name in targets if args.get(name) is not None]
-            irreversible = [IRREVERSIBLE.format(name) for name in given_targets if not typed(args[name], query)]
+            irreversible = [IRREVERSIBLE.format(name) for name in given_targets if not named(args[name], query)]
         clearable = [reason for reason in a0 if reason not in redirect]
         signals = []  # what the account says (W4, W5 in banking): never cleared (fix 2)
         if self.signals:

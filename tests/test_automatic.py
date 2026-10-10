@@ -370,3 +370,28 @@ def test_a_setting_must_be_typed_or_unchanged_and_the_judge_may_clear_it():
     rules = AutomaticPolicy("banking", load_tools("banking"), Planner("update_user_info"))
     rules.start_task(env)
     assert rules.review("update_user_info", from_file, "Update my address from address-change.txt.", env, []).warnings
+
+
+def test_an_empty_field_of_an_update_is_no_change_and_is_not_warned():
+    """AgentDojo's update tools leave a field as it was when given "" (review of 0.4): no redirect, no setting."""
+    banking = get_suite("v1.2.2", "banking")
+    env = banking.load_and_inject_default_environment({})
+    rules = AutomaticPolicy(
+        "banking", load_tools("banking"), Planner("update_scheduled_transaction", "update_user_info")
+    )
+    rules.start_task(env)
+    rent = {"id": 7, "recipient": "", "amount": 1200.0}
+    assert rules.review("update_scheduled_transaction", rent, "Raise my rent to 1200.", env, []).warnings == []
+    address = {"first_name": "", "last_name": "", "street": "Elm Street 1", "city": "Boston"}
+    query = "Update my address to Elm Street 1, Boston."
+    assert rules.review("update_user_info", address, query, env, []).warnings == []
+
+
+def test_a_new_payment_to_an_empty_recipient_is_still_warned():
+    """send_money has no selector: an empty recipient is a payment to nobody, warned as before."""
+    banking = get_suite("v1.2.2", "banking")
+    env = banking.load_and_inject_default_environment({})
+    rules = AutomaticPolicy("banking", load_tools("banking"), Planner("send_money"))
+    rules.start_task(env)
+    pay = {"recipient": "", "amount": 5.0, "subject": "x", "date": "2022-04-01"}
+    assert rules.review("send_money", pay, "Pay my bill", env, []).warnings

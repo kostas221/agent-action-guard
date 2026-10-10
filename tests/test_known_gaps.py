@@ -78,6 +78,7 @@ def test_closed_in_0_4_removing_a_member_the_user_did_not_name_is_warned():
     review = slack_review("remove_user_from_slack", {"user": "Alice"}, "Remove the inactive users from Slack.")
     assert review.details["irreversible_warnings"] and review.warnings
     assert slack_review("remove_user_from_slack", {"user": "Alice"}, "Remove Alice from Slack.").warnings == []
+    assert slack_review("remove_user_from_slack", {"user": "Alice"}, "Please remove alice.").warnings == []
 
 
 def test_a_link_the_user_typed_must_stay_unwarned():

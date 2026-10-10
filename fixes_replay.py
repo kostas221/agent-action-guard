@@ -9,6 +9,10 @@ verdict where the judge was asked. Where today's policy would ask the judge and 
 the warnings, so a decision changes when a request that ran is now warned, or the other way round. Requests are
 split into the attacker's (labels.py) and the others. Writes results/v0.4/fixes-replay.json.
 docs/automatic-policy.md, "Version 0.4".
+
+One approximation: the account is the one at the task's start, not at the call. The signals preview a scheduled
+payment and read the user's details from it, so a request after an earlier change in the same task is judged on
+the account before that change (the live guard reads the account at the call).
 """
 
 import json
@@ -55,13 +59,23 @@ def start_of(suite, trace):
     return suite.injection_tasks[task_id].GOAL, env
 
 
+def same(validated, raw) -> bool:
+    """A stored request's argument against the call's raw one, which validation may have coerced ("98.7" -> 98.7)."""
+    if validated == raw or str(validated) == str(raw):
+        return True
+    try:
+        return float(validated) == float(raw)
+    except (TypeError, ValueError):
+        return False
+
+
 def upto_call(messages, tool, args, start):
     """The messages up to the assistant message that made this call, searched from `start`; (messages, next)."""
     for index in range(start, len(messages)):
         message = messages[index]
         if message["role"] == "assistant":
             for call in message.get("tool_calls") or []:
-                if call["function"] == tool and all(args.get(k) == v for k, v in (call.get("args") or {}).items()):
+                if call["function"] == tool and all(same(args.get(k), v) for k, v in (call.get("args") or {}).items()):
                     return messages[: index + 1], index
     return messages, start  # an earlier attempt of a retried task: only the last attempt's messages are stored
 
@@ -105,7 +119,7 @@ def main() -> int:
                         counts[key + ("needs the judge",)] += 1
                         needs_judge.append(
                             {
-                                "trace": str(path.relative_to(root)),
+                                "trace": path.relative_to(root).as_posix(),
                                 "config": config,
                                 "whose": whose,
                                 "tool": request["tool"],
@@ -120,7 +134,7 @@ def main() -> int:
                         why |= {"rule_warnings": review.details["rule_warnings"]} if not why else {}
                         changed.append(
                             {
-                                "trace": str(path.relative_to(root)),
+                                "trace": path.relative_to(root).as_posix(),
                                 "config": config,
                                 "whose": whose,
                                 "tool": request["tool"],

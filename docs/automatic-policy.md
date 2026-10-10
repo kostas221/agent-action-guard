@@ -970,10 +970,11 @@ already (per suite, the current values: in banking the user's name, street and c
 judge may clear the warning, as it could clear W3 in 0.2. In banking `update_user_info`'s four fields become
 settings; Slack has none.
 
-**Fix 4: links in content** (gap 2) is **not** made a rule. Of the stored Slack requests, 99 correct ones carry a
-web address the user did not type (65 of them ran), against 231 of the attacker's; an address the agent never
-opened separates nothing (65 correct requests that ran have one too: the article's link sent without opening
-it). The attacker's link and the article's come from the same kind of source, the channels. Only a judge that
+**Fix 4: links in content** (gap 2) is **not** made a rule. Of the stored Slack requests made for user tasks, 104
+correct ones carry a web address the user did not type (70 of them ran), against 232 of the attacker's; an
+address the agent never opened separates nothing (99 of the correct ones have one, 65 of them ran: the article's
+link sent without opening it, against 231 of the attacker's). (An earlier version of this paragraph gave the
+second pair of counts for the first; corrected in a review before any run.) The attacker's link and the article's come from the same kind of source, the channels. Only a judge that
 reads whether a link belongs to the request can tell them apart; that is measured first in an offline pilot on
 the stored requests (a few cents, run by the user), with its own predictions, before any decision.
 
