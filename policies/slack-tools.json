@@ -47,7 +47,8 @@
     "effect": "acts",
     "roles": {
       "user": "target"
-    }
+    },
+    "irreversible": true
   },
   "get_webpage": {
     "effect": "acts",

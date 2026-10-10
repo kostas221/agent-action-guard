@@ -8,14 +8,17 @@ the tools' descriptions and checked by a person) says acts. The warnings:
   per task, before the first action is reviewed; a plan that fails is empty, so every action is then warned.
 In the hybrid a model judge may clear an A0 warning, as it may clear W1-W3 in banking, never an A1 warning.
 
-0.4 (docs/automatic-policy.md, "Version 0.4"): two warnings the judge cannot clear either:
-- a redirect: an action that changes an existing item (its tool has a selector) and sets who or where it goes
-  to someone the user neither typed nor already deals with;
-- the account's own signals, per suite (SIGNALS): in banking W4 (an unusual amount for that account) and W5
-  (the user's own details in a payment's subject), from banking.py, fixed at the task's start.
+0.4 (docs/automatic-policy.md, "Version 0.4"):
+- A0 also covers the user's own settings (role `setting`: a name, an address): typed, or equal to what the
+  account holds already (SETTINGS, at the task's start); the judge may clear it.
+- Warnings the judge cannot clear: a redirect (an action that changes an existing item, its tool having a
+  selector, and sets who or where it goes to someone the user neither typed nor already deals with); an
+  irreversible action (marked in the tools file) on a target the user did not name, known or not; and the
+  account's own signals, per suite (SIGNALS): in banking W4 (an unusual amount for that account) and W5 (the
+  user's own details in a payment's subject), from banking.py, fixed at the task's start.
 
 The suite-specific code is who the user already deals with (CONTACTS), what the account itself says about the
-user (SIGNALS) and, for evaluation only, how to recognize the attacker's requests (labels.py).
+user (SIGNALS, SETTINGS) and, for evaluation only, how to recognize the attacker's requests (labels.py).
 """
 
 import json
@@ -25,6 +28,7 @@ from pathlib import Path
 from agentdojo.types import ChatMessage
 
 from action_guard.banking import (
+    USER_FIELDS,
     Review,
     call_text,
     named_in,
@@ -38,6 +42,8 @@ from action_guard.planner import Plan, floor_reasons, typed
 
 UNEXPECTED = "This action is not part of what you asked."
 UNLISTED = "This tool is not in the checked list of tools: nothing is known about what it does."
+IRREVERSIBLE = "This cannot be undone, and you did not name the {}."
+KEY_ROLES = ("target", "secret", "setting")  # shown to the user with where each value came from
 FACT_WIDTH = 80
 
 
@@ -57,6 +63,16 @@ CONTACTS: dict[str, Callable] = {"banking": banking_contacts, "slack": slack_con
 # What the account says about the user beyond their contacts, per suite: (what to fix at the task's start,
 # the reasons for one call). Banking: the most paid to each account (W4) and the user's own details (W5).
 SIGNALS: dict[str, tuple[Callable, Callable]] = {"banking": (paid_amounts, signal_reasons)}
+
+
+def banking_settings(env) -> dict[str, str]:
+    user = env.user_account
+    return {name: getattr(user, name) for name in USER_FIELDS}
+
+
+# The user's own settings as the account holds them, per suite, by argument name: a setting equal to its current
+# value is no change and needs no typing (fix 3). Slack has no setting.
+SETTINGS: dict[str, Callable] = {"banking": banking_settings}
 
 
 def load_tools(suite_name: str, directory: str = "policies") -> dict:
@@ -121,15 +137,18 @@ class AutomaticPolicy:
         self.mode = mode
         self.contacts = CONTACTS[suite_name]
         self.signals = SIGNALS.get(suite_name)
+        self.settings = SETTINGS.get(suite_name)
         self.name = f"auto-{suite_name}-{mode}"
         self.known: dict[str, str] | None = None
         self.history = None
+        self.current: dict | None = None
         self.plan: Plan | None = None
         self.plan_query: str | None = None
 
     def start_task(self, env) -> None:
         self.known = self.contacts(env)  # fixed now: what the agent does during the task cannot add to it
         self.history = self.signals[0](env) if self.signals else None  # the same for the account's history
+        self.current = self.settings(env) if self.settings else None  # and for the user's own settings
         self.plan, self.plan_query = None, None
 
     def needs_approval(self, tool: str) -> bool:
@@ -150,12 +169,18 @@ class AutomaticPolicy:
             details = {"warning_source": self.name, "rule_warnings": [], "plan_warnings": [], "unlisted": True}
             return Review(summary=summary, warnings=[UNLISTED], details={**details, "plan": None, "judge": None})
         known = self.known if self.known is not None else self.contacts(env)
-        roles = self.tools[tool]["roles"]
-        a0 = floor_reasons(tool, args, query, roles, lambda value: value in known)
+        current = self.current if self.current is not None else (self.settings(env) if self.settings else None)
+        entry = self.tools[tool]
+        roles = entry["roles"]
+        a0 = floor_reasons(tool, args, query, roles, lambda value: value in known, current)
+        targets = {name: role for name, role in roles.items() if role == "target"}
         redirect = []  # who or where an existing item goes, moved to someone new: never cleared (fix 1)
         if "selector" in roles.values():
-            targets = {name: role for name, role in roles.items() if role == "target"}
             redirect = floor_reasons(tool, args, query, targets, lambda value: value in known)
+        irreversible = []  # what cannot be undone needs every target typed, known or not: never cleared (fix 5)
+        if entry.get("irreversible"):
+            given_targets = [name for name in targets if args.get(name) is not None]
+            irreversible = [IRREVERSIBLE.format(name) for name in given_targets if not typed(args[name], query)]
         clearable = [reason for reason in a0 if reason not in redirect]
         signals = []  # what the account says (W4, W5 in banking): never cleared (fix 2)
         if self.signals:
@@ -165,12 +190,13 @@ class AutomaticPolicy:
         a1 = [] if plan is None or any(action["tool"] == tool for action in plan.actions) else [UNEXPECTED]
         facts = argument_facts(args, roles, query, known, messages)
         given = {name: value for name, value in args.items() if value is not None}
-        key = [fact for fact in facts if roles.get(fact.split(" = ", 1)[0]) in ("target", "secret")]
+        key = [fact for fact in facts if roles.get(fact.split(" = ", 1)[0]) in KEY_ROLES]
         summary = "\n".join([f"{tool}({json.dumps(given, ensure_ascii=False)})", *key])
         details = {
             "warning_source": self.name,
             "rule_warnings": a0,
             "redirect_warnings": redirect,
+            "irreversible_warnings": irreversible,
             "signal_warnings": signals,
             "plan_warnings": a1,
             "plan": plan.to_dict() if plan is not None else None,
@@ -181,4 +207,5 @@ class AutomaticPolicy:
             verdict = self.judge.assess(query, tool, args, summary, facts, key_fields)
             details["judge"] = verdict.to_dict()
             clearable = [*clearable, f"Safety check: {verdict.reason}"] if verdict.warn else []
-        return Review(summary=summary, warnings=[*redirect, *clearable, *signals, *a1], details=details)
+        warnings = [*redirect, *irreversible, *clearable, *signals, *a1]
+        return Review(summary=summary, warnings=warnings, details=details)
