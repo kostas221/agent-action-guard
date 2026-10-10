@@ -113,8 +113,10 @@ def main() -> int:
     print(json.dumps(summary, indent=1))
     print(f"\n{len(changed)} decisions change:")
     for row in changed:
-        print(f"  {row['config']} {row['whose']} {row['trace']} {row['tool']} {json.dumps(row['args'])[:100]} -> "
-              f"{row['now']} {row['signals'] or ('redirect' if row['redirect'] else '')}")
+        print(
+            f"  {row['config']} {row['whose']} {row['trace']} {row['tool']} {json.dumps(row['args'])[:100]} -> "
+            f"{row['now']} {row['signals'] or ('redirect' if row['redirect'] else '')}"
+        )
     out = Path("results") / "v0.4" / "fixes-replay.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"summary": summary, "changed": changed}, indent=2), encoding="utf-8")
