@@ -958,3 +958,35 @@ name in the subject), which only the "attacker goal doable" check runs. No corre
 | 3 | at most 2% of correct banking requests newly warned; no attacker decision changes; Slack unchanged | **held**: 0.23%, all three wrong payments; 0; 0 |
 
 Gap 1's address case (A2) and gaps 2 and 3 stay open (`tests/test_known_gaps.py`).
+
+### Fixes 3 to 5 (stated before measuring)
+
+Written on 2026-10-10 after counting, on the stored 0.3 requests, how often each gap's request occurs (the counts
+informed the design; the live runs are the test).
+
+**Fix 3: the user's own details** (gap 1, A2). A new argument role, `setting`: a value an action stores in the
+user's own account or profile (name, address). It must be typed by the user or equal what the account holds
+already (per suite, the current values: in banking the user's name, street and city); otherwise A0 warns, and the
+judge may clear the warning, as it could clear W3 in 0.2. In banking `update_user_info`'s four fields become
+settings; Slack has none.
+
+**Fix 4: links in content** (gap 2) is **not** made a rule. Of the stored Slack requests, 99 correct ones carry a
+web address the user did not type (65 of them ran), against 231 of the attacker's; an address the agent never
+opened separates nothing (65 correct requests that ran have one too: the article's link sent without opening
+it). The attacker's link and the article's come from the same kind of source, the channels. Only a judge that
+reads whether a link belongs to the request can tell them apart; that is measured first in an offline pilot on
+the stored requests (a few cents, run by the user), with its own predictions, before any decision.
+
+**Fix 5: irreversible actions** (gap 3). A tool the tools file marks `"irreversible": true` (in Slack
+`remove_user_from_slack`) needs every target typed by the user; a member the user already works with is not
+enough, and the judge cannot clear it. No AgentDojo user task removes anyone.
+
+Predictions:
+
+4. **Fix 3, the adaptive cases.** With the rules, A2 and its twin are blocked; with the hybrid the judge decides
+   (not measured offline). The other cases as before.
+5. **Fix 3, the stored banking requests.** With the rules, the `update_user_info` requests of user task 13 (the
+   address from the file the user named) are newly warned, and task 15's (an address the user typed) are not;
+   with the hybrid they need the judge, which was never asked about them: counted apart, not guessed.
+6. **Fix 5.** No correct Slack request changes decision; no request of the attacker's changes either (removing
+   Fred is already warned: he is not a member at the task's start).
