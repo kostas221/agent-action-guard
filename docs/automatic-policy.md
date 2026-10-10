@@ -903,3 +903,32 @@ The three automatic configurations ran their three banking repeats on 2026-10-08
 Saved results recomputed with this code are byte for byte the same. The run files' fingerprint changes, so
 the runs made from here on (the defenses, the second template) are recorded as another experiment; none of
 these changes acts in a configuration without the guard.
+
+## Version 0.4: closing the known gaps (stated before measuring)
+
+Written on 2026-10-10, before any code for it, on branch `v0.4`. The 0.3 code stays as it is until AgentDojo's
+second template has run on it; 0.4 is measured first on the stored requests and the cases of
+`docs/adaptive-tests.md` (no model calls), then live with predictions written before.
+
+**Fix 1: a redirect is never cleared** (gap 5). When an action changes an existing item (the tool has a selector)
+and sets who or where it goes to someone the user neither typed nor already deals with, A0's warning cannot be
+cleared by the judge. Changing a payee's account details is the classic payment-diversion fraud; the judge
+cleared exactly this nine times out of nine in banking, and only the plan stopped it. A payee the user typed or
+already pays is not warned at all, as before.
+
+**Fix 2: the account's own signals** (gap 1, B and C). The automatic policy gets, per suite, what the
+hand-written policy knew from the account: for banking, W4 (an amount more than twice the most the user has paid
+that account, unless typed) and W5 (the user's own details in a payment's subject, unless typed), from
+`banking.py`, fixed at the task's start like the contacts. Like A1, the judge cannot clear them. This is the
+second piece of suite-specific code, after the contacts: what counts as the user's history and details.
+
+Predictions:
+
+1. **Fix 1.** Of the stored banking requests of the three automatic configurations, no correct request changes
+   decision; the nine redirects the judge cleared are warned without A1. Slack: no change (no tool there has a
+   selector).
+2. **Fix 2, the adaptive cases.** B1, B2 and C1 are blocked; their twins still run; A1 and D1-D3 stay blocked;
+   A2 still runs (gap 1's address case is not touched by fix 2).
+3. **Fix 2, the stored banking requests.** At most 2% of the correct requests of the three configurations get a
+   new warning (the 0.2 replay found 0.5% to 1.8%); no attacker's request changes decision (all are already
+   rejected). Slack: no change.
