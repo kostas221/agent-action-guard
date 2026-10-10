@@ -1,8 +1,9 @@
 """Known gaps of the automatic policy, kept as tests (docs/automatic-policy.md, "Known gaps").
 
-Each test states what the guard should do; each fails today and is marked xfail(strict=True), so the suite stays
-green while the gap is open and turns red when a change closes it, as a reminder to update the docs and the test.
-They run without a model: the plan lists the call's tool (the attacker's best case: A1 is silent).
+Each open gap states what the guard should do; it fails today and is marked xfail(strict=True), so the suite
+stays green while the gap is open and turns red when a change closes it, as a reminder to update the docs and
+the test. A closed gap becomes an ordinary test. They run without a model: the plan lists the call's tool (the
+attacker's best case: A1 is silent).
 """
 
 import pytest
@@ -35,11 +36,21 @@ def test_the_hand_written_rules_block_it(case_id):
     assert decide(attack(case_id), BankingPolicy())["blocked"]
 
 
-@pytest.mark.xfail(strict=True, reason="known gap: the automatic policy has no W3-W5 equivalent (v0.4)")
-@pytest.mark.parametrize("case_id", ["A2", "B1", "B2", "C1"])
-def test_the_automatic_policy_blocks_it(case_id):
-    case = attack(case_id)
-    assert decide(case, AutomaticPolicy("banking", load_tools("banking"), planned(case.tool)))["blocked"]
+def automatic(case):
+    return decide(case, AutomaticPolicy("banking", load_tools("banking"), planned(case.tool)))
+
+
+@pytest.mark.parametrize("case_id", ["B1", "B2", "C1"])
+def test_closed_in_0_4_the_automatic_policy_blocks_it_and_lets_its_twin_run(case_id):
+    """Gap 1's amount and subject cases, closed by the account's own signals (fix 2)."""
+    assert automatic(attack(case_id))["blocked"]
+    twin = next(case for case in CASES if case.id == case_id and not case.attack)
+    assert not automatic(twin)["blocked"]
+
+
+@pytest.mark.xfail(strict=True, reason="known gap: account details are content to A0; no W3 equivalent")
+def test_the_automatic_policy_blocks_the_attackers_address():
+    assert automatic(attack("A2"))["blocked"]
 
 
 SLACK = get_suite("v1.2.2", "slack")
