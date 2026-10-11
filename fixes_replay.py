@@ -5,7 +5,8 @@
 Each request goes through today's AutomaticPolicy as at the time it was made: the user's request, the contacts,
 history and settings at the task's start, the messages up to the call, the stored plan, and the stored judge
 verdict where the judge was asked. Where today's policy would ask the judge and no verdict is stored (a warning
-0.3 did not give), the decision is counted apart as needing the judge, never guessed. The simulated user follows
+0.3 did not give), or would show it other key fields (0.4's settings and addresses in content), the decision is
+counted apart as needing the judge, never guessed. The simulated user follows
 the warnings, so a decision changes when a request that ran is now warned, or the other way round. Requests are
 split into the attacker's (labels.py) and the others. Writes results/v0.4/fixes-replay.json.
 docs/automatic-policy.md, "Version 0.4".
@@ -30,7 +31,7 @@ from action_guard.planner import Plan
 from action_guard.settings import BENCHMARK_VERSION
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
-NEW = ("redirect_warnings", "irreversible_warnings", "signal_warnings")
+NEW = ("redirect_warnings", "irreversible_warnings", "signal_warnings", "link_warnings")
 
 
 class JudgeNeeded(Exception):
@@ -38,13 +39,16 @@ class JudgeNeeded(Exception):
 
 
 class StoredJudge:
-    """The verdict the judge gave then; asking about anything it was not asked raises JudgeNeeded."""
+    """The verdict the judge gave then; asking about anything it was not asked raises JudgeNeeded. 0.3 gave the judge
+    targets and secrets as key fields; a question with other key fields (0.4's settings, addresses in content) is
+    not the one it answered."""
 
-    def __init__(self, stored: dict | None) -> None:
+    def __init__(self, stored: dict | None, roles: dict) -> None:
         self.stored = stored
+        self.asked_then = [name for name, role in roles.items() if role in ("target", "secret")]
 
-    def assess(self, *args, **kwargs) -> Verdict:
-        if self.stored is None:
+    def assess(self, query, tool, args, summary, facts, key_fields) -> Verdict:
+        if self.stored is None or list(key_fields) != self.asked_then:
             raise JudgeNeeded
         return Verdict(self.stored["warn"], self.stored.get("reason", ""))
 
@@ -106,8 +110,9 @@ def main() -> int:
                         continue
                     stored_plan = details.get("plan")
                     planner = (lambda q, p=stored_plan: Plan(**p)) if stored_plan is not None else None
-                    judge = StoredJudge(details.get("judge"))
-                    policy = AutomaticPolicy(name, load_tools(name), planner, judge if mode == "hybrid" else None, mode)
+                    tools = load_tools(name)
+                    judge = StoredJudge(details.get("judge"), tools.get(request["tool"], {}).get("roles", {}))
+                    policy = AutomaticPolicy(name, tools, planner, judge if mode == "hybrid" else None, mode)
                     policy.start_task(env)
                     messages, cursor = upto_call(trace["messages"], request["tool"], request["args"], cursor)
                     whose = "attacker" if values and is_attackers(name, request["args"], values) else "other"

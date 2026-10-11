@@ -16,6 +16,7 @@ import argparse
 import sys
 import time
 import warnings
+from contextlib import ExitStack
 from pathlib import Path
 
 from agentdojo.attacks.attack_registry import load_attack
@@ -27,6 +28,7 @@ from dotenv import load_dotenv
 from action_guard.manifest import ExperimentMismatch, check_or_write
 from action_guard.metrics import expected_runs
 from action_guard.pipelines import CONFIGS, build_pipeline, guarded_suites
+from action_guard.runlock import AlreadyRunning, run_lock
 from action_guard.settings import ATTACK, ATTACKS, BENCHMARK_VERSION, DEFAULT_MODEL, SUITES
 from action_guard.usage import BudgetExceeded, UsageMeter
 
@@ -71,6 +73,19 @@ def main() -> int:
     load_dotenv(".env")
     meter = UsageMeter(args.max_usd)
     logdir = Path(args.runs_dir) / args.config / f"rep{args.rep}"
+    locks = ExitStack()  # one writer per suite and repeat, held until this process ends
+    try:
+        for name in args.suites:
+            locks.enter_context(run_lock(logdir / f".{name}.lock"))
+    except AlreadyRunning as exc:
+        locks.close()
+        print(f"!! {exc}")
+        return 2
+    with locks:
+        return run(args, meter, logdir)
+
+
+def run(args, meter: UsageMeter, logdir: Path) -> int:
     try:  # one repeat is one experiment: resumed only with the same setup and the same run files
         experiment = check_or_write(logdir, args.config, args.model, attack=args.attack)
     except ExperimentMismatch as exc:

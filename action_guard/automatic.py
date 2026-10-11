@@ -16,12 +16,17 @@ In the hybrid a model judge may clear an A0 warning, as it may clear W1-W3 in ba
   irreversible action (marked in the tools file) on a target the user did not name, known or not; and the
   account's own signals, per suite (SIGNALS): in banking W4 (an unusual amount for that account) and W5 (the
   user's own details in a payment's subject), from banking.py, fixed at the task's start.
+- In the hybrid only, a web or email address inside a message's content that the user did not type is the
+  judge's to read (fix 4): the judge is asked, and told where each such address first appeared. The rules
+  leave it alone: an attacker's link and an article's link come from the same channels, and no rule tells them
+  apart (docs/automatic-policy.md, "Fix 4").
 
 The suite-specific code is who the user already deals with (CONTACTS), what the account itself says about the
 user (SIGNALS, SETTINGS) and, for evaluation only, how to recognize the attacker's requests (labels.py).
 """
 
 import json
+import re
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
@@ -29,6 +34,7 @@ from agentdojo.types import ChatMessage
 
 from action_guard.banking import (
     USER_FIELDS,
+    WEB_SCHEME,
     Review,
     call_text,
     named_in,
@@ -38,13 +44,28 @@ from action_guard.banking import (
     source_call,
     value_forms,
 )
-from action_guard.planner import Plan, floor_reasons, typed
+from action_guard.planner import EFFECTS, ROLES, Plan, floor_reasons, typed
 
 UNEXPECTED = "This action is not part of what you asked."
 UNLISTED = "This tool is not in the checked list of tools: nothing is known about what it does."
 IRREVERSIBLE = "This cannot be undone, and you did not name the {}."
-KEY_ROLES = ("target", "secret", "setting")  # shown to the user with where each value came from
+LINKED = "The {} carries an address you did not give: {}."
+KEY_ROLES = ("target", "secret", "setting")  # shown to the user and the judge with where each value came from
+ADDRESS_FACT = "address in {}"  # the name of a fact about an address inside a content argument (fix 4)
 FACT_WIDTH = 80
+ADDRESSES_SHOWN = 5  # per argument, in the warning and the judge's facts; the judge sees the whole call anyway
+
+# A web or email address inside a message (fix 4): an email, an address with its scheme, or a host on a common
+# ending, with or without www. ("secure-systems-252.com/x"). labels.ADDRESS, which recognizes the attacker's
+# addresses for evaluation, is kept apart: changing what the guard looks for never changes what is counted.
+ENDINGS = ("com", "net", "org", "io", "co", "ai", "app", "dev", "info", "biz", "xyz", "me", "site", "online", "ly")
+COUNTRIES = ("eu", "uk", "us", "de", "fr", "it", "es", "nl", "ch", "gr")
+CONTENT_ADDRESS = re.compile(
+    r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"
+    r"|https?://[^\s\"'<>()\[\]{}]*[\w/]"
+    r"|(?<![\w.@/-])(?:[\w-]+\.)+(?:" + "|".join(ENDINGS + COUNTRIES) + r")(?![\w-])(?:/[^\s\"'<>()\[\]{}]*[\w/])?",
+    re.IGNORECASE,
+)
 
 
 def slack_contacts(env) -> dict[str, str]:
@@ -80,22 +101,123 @@ def named(value, query: str) -> bool:
     return typed(value, query) or typed(str(value).lower(), query.lower())
 
 
+def address_typed(address: str, query: str) -> bool:
+    """Whether the user wrote this address, in any case, with or without its scheme or www. (fix 4)."""
+    host = re.sub(r"^www\.", "", WEB_SCHEME.sub("", address), flags=re.IGNORECASE)
+    return named(address, query) or named(host, query)
+
+
+def content_addresses(args: Mapping, roles: Mapping[str, str], query: str) -> dict[str, list[str]]:
+    """Per content argument, the web and email addresses in it that the user did not type, once each (fix 4)."""
+    found = {}
+    for name, value in args.items():
+        if roles.get(name) != "content" or not isinstance(value, str):
+            continue
+        written = dict.fromkeys(CONTENT_ADDRESS.findall(value))
+        untyped = [address for address in written if not address_typed(address, query)]
+        if untyped:
+            found[name] = untyped
+    return found
+
+
+def shown(addresses: Sequence[str]) -> str:
+    more = len(addresses) - ADDRESSES_SHOWN
+    return ", ".join(addresses[:ADDRESSES_SHOWN]) + (f" and {more} more" if more > 0 else "")
+
+
+def origin(value, query: str, messages, known: Mapping[str, str] | None = None, secret: bool = False) -> str:
+    """Where a value came from, as the judge is told: the request, the user's contacts, or a tool's output."""
+    if typed(value, query, secret=secret):
+        return "in the user's request"
+    if known is not None and str(value) in known:
+        return f"someone the user already deals with: {known[str(value)]}"
+    if (call := source_call(value, messages)) is not None:
+        named_source = ", a source the user's request names" if named_in(call, query) else ""
+        return f"not in the user's request; first appeared in the output of {call_text(call)}{named_source}"
+    return "neither in the user's request nor in any tool output (made up or computed)"
+
+
+TOOL_KEYS = ("effect", "roles", "irreversible")
+
+
+def unique_keys(pairs: list[tuple[str, object]]) -> dict:
+    """A JSON object with a key given twice is refused: json.loads would silently keep the last one."""
+    keys = [key for key, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ValueError(f"a key is given twice: {sorted({key for key in keys if keys.count(key) > 1})}")
+    return dict(pairs)
+
+
 def load_tools(suite_name: str, directory: str = "policies") -> dict:
-    return json.loads(Path(directory, f"{suite_name}-tools.json").read_text(encoding="utf-8"))
+    text = Path(directory, f"{suite_name}-tools.json").read_text(encoding="utf-8")
+    tools = json.loads(text, object_pairs_hook=unique_keys)
+    validate_tools(tools)
+    return tools
+
+
+def tools_problems(tools: Mapping) -> list[str]:
+    """What is wrong with a tools file's own shape (review of 0.4: "act" for "acts" ran a tool without approval)."""
+    problems = []
+    for tool, entry in tools.items():
+        if not isinstance(entry, Mapping):
+            problems.append(f"{tool}: not an object")
+            continue
+        if unknown := sorted(set(entry) - set(TOOL_KEYS)):
+            problems.append(f"{tool}: unknown keys {unknown}")
+        if entry.get("effect") not in EFFECTS:
+            problems.append(f"{tool}: effect {entry.get('effect')!r} is not one of {list(EFFECTS)}")
+        roles = entry.get("roles")
+        if not isinstance(roles, Mapping):
+            problems.append(f"{tool}: roles must be an object")
+        else:
+            problems += [
+                f"{tool}.{name}: role {role!r} is not one of {list(ROLES)}"
+                for name, role in roles.items()
+                if role not in ROLES
+            ]
+        if "irreversible" in entry and (entry["irreversible"] is not True or entry.get("effect") != "acts"):
+            problems.append(f"{tool}: irreversible must be true, and only on a tool that acts")
+    return problems
+
+
+def validate_tools(tools: Mapping) -> None:
+    if problems := tools_problems(tools):
+        listing = "".join(f"\n  {problem}" for problem in problems)
+        raise ValueError(f"The tools file is not valid; nothing runs on it:{listing}")
 
 
 def check_tools(suite_name: str, tools: Mapping[str, dict], suite_tools) -> None:
-    """The tools file must describe exactly the suite's tools: a run with a stale file is refused, not guessed."""
+    """The tools file must describe exactly the suite's tools and their arguments: a run with a stale or partial file
+    is refused, not guessed. Every argument of a tool that acts has a role, so none goes unchecked by omission."""
+    validate_tools(tools)
     listed, actual = set(tools), {tool.name for tool in suite_tools}
     if listed != actual:
         raise ValueError(
             f"policies/{suite_name}-tools.json does not match the suite: missing {sorted(actual - listed)}, "
             f"not in the suite {sorted(listed - actual)}. Run classify_tools.py and check the file again."
         )
+    problems = []
+    for tool in suite_tools:
+        arguments, roles = set(tool.parameters.model_fields), set(tools[tool.name]["roles"])
+        if extra := sorted(roles - arguments):
+            problems.append(f"{tool.name}: roles for arguments the tool does not have {extra}")
+        if tools[tool.name]["effect"] == "acts" and (missing := sorted(arguments - roles)):
+            problems.append(f"{tool.name}: arguments without a role {missing}")
+    if problems:
+        listing = "".join(f"\n  {problem}" for problem in problems)
+        raise ValueError(f"policies/{suite_name}-tools.json does not match the suite's arguments:{listing}")
 
 
-def argument_facts(args: Mapping, roles: Mapping[str, str], query: str, known: Mapping[str, str], messages) -> list:
-    """Where each argument's value came from, computed by code (for the judge, which never reads tool outputs)."""
+def argument_facts(
+    args: Mapping,
+    roles: Mapping[str, str],
+    query: str,
+    known: Mapping[str, str],
+    messages,
+    addresses: Mapping[str, Sequence[str]] | None = None,
+) -> list:
+    """Where each argument's value came from, computed by code (for the judge, which never reads tool outputs);
+    then where each address inside a content argument came from (`addresses`, fix 4)."""
     facts = []
     for name, value in args.items():
         if value is None:
@@ -106,17 +228,13 @@ def argument_facts(args: Mapping, roles: Mapping[str, str], query: str, known: M
             continue
         if not value_forms(value):
             continue
-        shown = json.dumps(value if len(str(value)) <= FACT_WIDTH else f"{str(value)[:FACT_WIDTH]}...")
-        if typed(value, query, secret=roles.get(name) == "secret"):
-            where = "in the user's request"
-        elif roles.get(name) == "target" and str(value) in known:
-            where = f"someone the user already deals with: {known[str(value)]}"
-        elif (call := source_call(value, messages)) is not None:
-            named = ", a source the user's request names" if named_in(call, query) else ""
-            where = f"not in the user's request; first appeared in the output of {call_text(call)}{named}"
-        else:
-            where = "neither in the user's request nor in any tool output (made up or computed)"
-        facts.append(f"{name} = {shown}: {where}")
+        written = json.dumps(value if len(str(value)) <= FACT_WIDTH else f"{str(value)[:FACT_WIDTH]}...")
+        role = roles.get(name)
+        where = origin(value, query, messages, known if role == "target" else None, secret=role == "secret")
+        facts.append(f"{name} = {written}: {where}")
+    for name, found in (addresses or {}).items():
+        for address in found[:ADDRESSES_SHOWN]:
+            facts.append(f"{ADDRESS_FACT.format(name)} = {json.dumps(address)}: {origin(address, query, messages)}")
     return facts
 
 
@@ -136,6 +254,7 @@ class AutomaticPolicy:
         if mode == "hybrid" and judge is None:
             raise ValueError("the hybrid needs a judge")
         self.suite_name = suite_name
+        validate_tools(tools)  # a misspelled effect or role is refused here, never read as reading
         self.tools = tools
         self.planner = planner  # None: no plan, so no A1
         self.judge = judge
@@ -158,7 +277,7 @@ class AutomaticPolicy:
 
     def needs_approval(self, tool: str) -> bool:
         entry = self.tools.get(tool)
-        return entry is None or entry.get("effect") == "acts"  # a tool the file does not list is asked about
+        return entry is None or entry["effect"] != "reads"  # asked unless declared reading, a tool not listed too
 
     def plan_for(self, query: str) -> Plan | None:
         if self.planner is None:
@@ -194,16 +313,21 @@ class AutomaticPolicy:
         if entry.get("irreversible"):
             given_targets = [name for name in targets if args.get(name) is not None]
             irreversible = [IRREVERSIBLE.format(name) for name in given_targets if not named(args[name], query)]
-        clearable = [reason for reason in a0 if reason not in redirect]
+        # An address in a message the user did not type: the judge's to read, in the hybrid only (fix 4)
+        addresses = content_addresses(args, roles, query) if self.mode == "hybrid" else {}
+        linked = [LINKED.format(name, shown(found)) for name, found in addresses.items()]
+        clearable = [reason for reason in a0 if reason not in redirect] + linked
         signals = []  # what the account says (W4, W5 in banking): never cleared (fix 2)
         if self.signals:
             history = self.history if self.history is not None else self.signals[0](env)
             signals = self.signals[1](tool, args, query, env, history)
         plan = self.plan_for(query)
         a1 = [] if plan is None or any(action["tool"] == tool for action in plan.actions) else [UNEXPECTED]
-        facts = argument_facts(args, roles, query, known, messages)
+        facts = argument_facts(args, roles, query, known, messages, addresses)
+        key_fields = [name for name, role in roles.items() if role in KEY_ROLES]
+        key_fields += [ADDRESS_FACT.format(name) for name in addresses]
         given = {name: value for name, value in args.items() if value is not None}
-        key = [fact for fact in facts if roles.get(fact.split(" = ", 1)[0]) in KEY_ROLES]
+        key = [fact for fact in facts if fact.split(" = ", 1)[0] in key_fields]
         summary = "\n".join([f"{tool}({json.dumps(given, ensure_ascii=False)})", *key])
         details = {
             "warning_source": self.name,
@@ -211,12 +335,12 @@ class AutomaticPolicy:
             "redirect_warnings": redirect,
             "irreversible_warnings": irreversible,
             "signal_warnings": signals,
+            "link_warnings": linked,
             "plan_warnings": a1,
             "plan": plan.to_dict() if plan is not None else None,
             "judge": None,
         }
         if self.mode == "hybrid" and clearable:
-            key_fields = [name for name, role in roles.items() if role in ("target", "secret")]
             verdict = self.judge.assess(query, tool, args, summary, facts, key_fields)
             details["judge"] = verdict.to_dict()
             clearable = [*clearable, f"Safety check: {verdict.reason}"] if verdict.warn else []
