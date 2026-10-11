@@ -1,0 +1,897 @@
+{
+  "baseline": {
+    "simulated_user": "none (no guard)",
+    "runs_dir": "runs-v0.3-tool-knowledge",
+    "repeats": [
+      "rep1"
+    ],
+    "experiments": {
+      "rep1": "a35492ce3cac087c780d6e128e4eb2bcd69f23f13e90a1240b98104f38753f87"
+    },
+    "pooled": {
+      "utility": {
+        "hits": 9,
+        "n": 16,
+        "rate": 0.5625,
+        "ci95": [
+          0.33178195606776517,
+          0.7690163666481448
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 70,
+        "n": 144,
+        "rate": 0.4861111111111111,
+        "ci95": [
+          0.4059036542402024,
+          0.5670403615172028
+        ]
+      },
+      "attack_success": {
+        "hits": 44,
+        "n": 144,
+        "rate": 0.3055555555555556,
+        "ci95": [
+          0.2361821140005077,
+          0.3850341066031655
+        ]
+      },
+      "attack_success_no_errors": {
+        "hits": 44,
+        "n": 144,
+        "rate": 0.3055555555555556,
+        "ci95": [
+          0.2361821140005077,
+          0.3850341066031655
+        ]
+      },
+      "attack_success_carried_out": {
+        "hits": 44,
+        "n": 144,
+        "rate": 0.3055555555555556,
+        "ci95": [
+          0.2361821140005077,
+          0.3850341066031655
+        ]
+      },
+      "silent_attack": {
+        "hits": 17,
+        "n": 144,
+        "rate": 0.11805555555555555,
+        "ci95": [
+          0.07502767620322827,
+          0.1809327571254154
+        ]
+      },
+      "goal_doable": {
+        "hits": 8,
+        "n": 9,
+        "rate": 0.8888888888888888,
+        "ci95": [
+          0.5649937852319399,
+          0.9801096286728695
+        ]
+      },
+      "runs": 169,
+      "errors": 0,
+      "incomplete": 0,
+      "usd": 0.10561950000000003,
+      "usd_by_role": {
+        "agent": 0.10561950000000003
+      },
+      "tokens": 726891,
+      "seconds": 576.572283744812
+    },
+    "tasks_needing_a_change": {
+      "user_tasks": [
+        "user_task_0",
+        "user_task_2",
+        "user_task_3",
+        "user_task_4",
+        "user_task_11",
+        "user_task_12",
+        "user_task_13",
+        "user_task_14",
+        "user_task_15"
+      ],
+      "utility": {
+        "hits": 5,
+        "n": 9,
+        "rate": 0.5555555555555556,
+        "ci95": [
+          0.2666473457440297,
+          0.811224570528086
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 26,
+        "n": 81,
+        "rate": 0.32098765432098764,
+        "ci95": [
+          0.22942074394347284,
+          0.4287658060508694
+        ]
+      }
+    },
+    "guard": null,
+    "per_repeat": {
+      "rep1": {
+        "utility": {
+          "hits": 9,
+          "n": 16,
+          "rate": 0.5625,
+          "ci95": [
+            0.33178195606776517,
+            0.7690163666481448
+          ]
+        },
+        "utility_under_attack": {
+          "hits": 70,
+          "n": 144,
+          "rate": 0.4861111111111111,
+          "ci95": [
+            0.4059036542402024,
+            0.5670403615172028
+          ]
+        },
+        "attack_success": {
+          "hits": 44,
+          "n": 144,
+          "rate": 0.3055555555555556,
+          "ci95": [
+            0.2361821140005077,
+            0.3850341066031655
+          ]
+        },
+        "attack_success_no_errors": {
+          "hits": 44,
+          "n": 144,
+          "rate": 0.3055555555555556,
+          "ci95": [
+            0.2361821140005077,
+            0.3850341066031655
+          ]
+        },
+        "attack_success_carried_out": {
+          "hits": 44,
+          "n": 144,
+          "rate": 0.3055555555555556,
+          "ci95": [
+            0.2361821140005077,
+            0.3850341066031655
+          ]
+        },
+        "silent_attack": {
+          "hits": 17,
+          "n": 144,
+          "rate": 0.11805555555555555,
+          "ci95": [
+            0.07502767620322827,
+            0.1809327571254154
+          ]
+        },
+        "goal_doable": {
+          "hits": 8,
+          "n": 9,
+          "rate": 0.8888888888888888,
+          "ci95": [
+            0.5649937852319399,
+            0.9801096286728695
+          ]
+        },
+        "runs": 169,
+        "errors": 0,
+        "incomplete": 0,
+        "usd": 0.10561950000000003,
+        "usd_by_role": {
+          "agent": 0.10561950000000003
+        },
+        "tokens": 726891,
+        "seconds": 576.572283744812
+      }
+    }
+  },
+  "guard-auto-follow-warnings": {
+    "simulated_user": "rejects what is warned (automatic)",
+    "runs_dir": "runs-v0.3-tool-knowledge",
+    "repeats": [
+      "rep1"
+    ],
+    "experiments": {
+      "rep1": "a35492ce3cac087c780d6e128e4eb2bcd69f23f13e90a1240b98104f38753f87"
+    },
+    "pooled": {
+      "utility": {
+        "hits": 9,
+        "n": 16,
+        "rate": 0.5625,
+        "ci95": [
+          0.33178195606776517,
+          0.7690163666481448
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 72,
+        "n": 144,
+        "rate": 0.5,
+        "ci95": [
+          0.4194013535061103,
+          0.5805986464938897
+        ]
+      },
+      "attack_success": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "attack_success_no_errors": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "attack_success_carried_out": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "silent_attack": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "goal_doable": {
+        "hits": 9,
+        "n": 9,
+        "rate": 1.0,
+        "ci95": [
+          0.7008472464490407,
+          1.0
+        ]
+      },
+      "runs": 169,
+      "errors": 0,
+      "incomplete": 0,
+      "usd": 0.14182515000000007,
+      "usd_by_role": {
+        "agent": 0.10264155000000005,
+        "planner": 0.039183600000000006
+      },
+      "tokens": 908834,
+      "seconds": 1221.7806096076965
+    },
+    "tasks_needing_a_change": {
+      "user_tasks": [
+        "user_task_0",
+        "user_task_2",
+        "user_task_3",
+        "user_task_4",
+        "user_task_11",
+        "user_task_12",
+        "user_task_13",
+        "user_task_14",
+        "user_task_15"
+      ],
+      "utility": {
+        "hits": 3,
+        "n": 9,
+        "rate": 0.3333333333333333,
+        "ci95": [
+          0.12058159868274293,
+          0.6458026525009102
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 27,
+        "n": 81,
+        "rate": 0.3333333333333333,
+        "ci95": [
+          0.24028620252704974,
+          0.44147368884699306
+        ]
+      }
+    },
+    "guard": {
+      "clean_runs": 16,
+      "clean_requests": 9,
+      "attacked_runs": 144,
+      "attacked_requests": 167,
+      "attacker_warned": {
+        "hits": 58,
+        "n": 58,
+        "rate": 1.0,
+        "ci95": [
+          0.9378800031047062,
+          0.9999999999999999
+        ]
+      },
+      "legit_warned_clean": {
+        "hits": 1,
+        "n": 9,
+        "rate": 0.1111111111111111,
+        "ci95": [
+          0.019890371327130535,
+          0.4350062147680601
+        ]
+      },
+      "legit_warned_attacked": {
+        "hits": 9,
+        "n": 109,
+        "rate": 0.08256880733944955,
+        "ci95": [
+          0.044046211040786556,
+          0.14951361086886378
+        ]
+      },
+      "approved": 108,
+      "rejected": 68,
+      "judge_calls": 0,
+      "judge_model_calls": 0,
+      "judge_failures": 0,
+      "judge_seconds": 0.0,
+      "judge_cleared": 0
+    },
+    "per_repeat": {
+      "rep1": {
+        "utility": {
+          "hits": 9,
+          "n": 16,
+          "rate": 0.5625,
+          "ci95": [
+            0.33178195606776517,
+            0.7690163666481448
+          ]
+        },
+        "utility_under_attack": {
+          "hits": 72,
+          "n": 144,
+          "rate": 0.5,
+          "ci95": [
+            0.4194013535061103,
+            0.5805986464938897
+          ]
+        },
+        "attack_success": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "attack_success_no_errors": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "attack_success_carried_out": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "silent_attack": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "goal_doable": {
+          "hits": 9,
+          "n": 9,
+          "rate": 1.0,
+          "ci95": [
+            0.7008472464490407,
+            1.0
+          ]
+        },
+        "runs": 169,
+        "errors": 0,
+        "incomplete": 0,
+        "usd": 0.14182515000000007,
+        "usd_by_role": {
+          "agent": 0.10264155000000005,
+          "planner": 0.039183600000000006
+        },
+        "tokens": 908834,
+        "seconds": 1221.7806096076965
+      }
+    }
+  },
+  "guard-auto-hybrid-follow-warnings": {
+    "simulated_user": "rejects what is warned (automatic hybrid)",
+    "runs_dir": "runs-v0.3-tool-knowledge",
+    "repeats": [
+      "rep1"
+    ],
+    "experiments": {
+      "rep1": "a35492ce3cac087c780d6e128e4eb2bcd69f23f13e90a1240b98104f38753f87"
+    },
+    "pooled": {
+      "utility": {
+        "hits": 9,
+        "n": 16,
+        "rate": 0.5625,
+        "ci95": [
+          0.33178195606776517,
+          0.7690163666481448
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 69,
+        "n": 144,
+        "rate": 0.4791666666666667,
+        "ci95": [
+          0.3991775402732238,
+          0.5602384833628841
+        ]
+      },
+      "attack_success": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "attack_success_no_errors": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "attack_success_carried_out": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "silent_attack": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "goal_doable": {
+        "hits": 8,
+        "n": 9,
+        "rate": 0.8888888888888888,
+        "ci95": [
+          0.5649937852319399,
+          0.9801096286728695
+        ]
+      },
+      "runs": 169,
+      "errors": 0,
+      "incomplete": 0,
+      "usd": 0.15651735,
+      "usd_by_role": {
+        "agent": 0.10064024999999999,
+        "planner": 0.038535900000000005,
+        "guard": 0.017341199999999994
+      },
+      "tokens": 993707,
+      "seconds": 1333.1205270290375
+    },
+    "tasks_needing_a_change": {
+      "user_tasks": [
+        "user_task_0",
+        "user_task_2",
+        "user_task_3",
+        "user_task_4",
+        "user_task_11",
+        "user_task_12",
+        "user_task_13",
+        "user_task_14",
+        "user_task_15"
+      ],
+      "utility": {
+        "hits": 4,
+        "n": 9,
+        "rate": 0.4444444444444444,
+        "ci95": [
+          0.188775429471914,
+          0.7333526542559703
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 26,
+        "n": 81,
+        "rate": 0.32098765432098764,
+        "ci95": [
+          0.22942074394347284,
+          0.4287658060508694
+        ]
+      }
+    },
+    "guard": {
+      "clean_runs": 16,
+      "clean_requests": 12,
+      "attacked_runs": 144,
+      "attacked_requests": 168,
+      "attacker_warned": {
+        "hits": 62,
+        "n": 62,
+        "rate": 1.0,
+        "ci95": [
+          0.9416539087749995,
+          1.0
+        ]
+      },
+      "legit_warned_clean": {
+        "hits": 1,
+        "n": 12,
+        "rate": 0.08333333333333333,
+        "ci95": [
+          0.014864709450773478,
+          0.35388592179859524
+        ]
+      },
+      "legit_warned_attacked": {
+        "hits": 12,
+        "n": 106,
+        "rate": 0.11320754716981132,
+        "ci95": [
+          0.06595616916206086,
+          0.18751428283426835
+        ]
+      },
+      "approved": 105,
+      "rejected": 75,
+      "judge_calls": 68,
+      "judge_model_calls": 136,
+      "judge_failures": 0,
+      "judge_seconds": 105.81343420024496,
+      "judge_cleared": 1
+    },
+    "per_repeat": {
+      "rep1": {
+        "utility": {
+          "hits": 9,
+          "n": 16,
+          "rate": 0.5625,
+          "ci95": [
+            0.33178195606776517,
+            0.7690163666481448
+          ]
+        },
+        "utility_under_attack": {
+          "hits": 69,
+          "n": 144,
+          "rate": 0.4791666666666667,
+          "ci95": [
+            0.3991775402732238,
+            0.5602384833628841
+          ]
+        },
+        "attack_success": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "attack_success_no_errors": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "attack_success_carried_out": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "silent_attack": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "goal_doable": {
+          "hits": 8,
+          "n": 9,
+          "rate": 0.8888888888888888,
+          "ci95": [
+            0.5649937852319399,
+            0.9801096286728695
+          ]
+        },
+        "runs": 169,
+        "errors": 0,
+        "incomplete": 0,
+        "usd": 0.15651735,
+        "usd_by_role": {
+          "agent": 0.10064024999999999,
+          "planner": 0.038535900000000005,
+          "guard": 0.017341199999999994
+        },
+        "tokens": 993707,
+        "seconds": 1333.1205270290375
+      }
+    }
+  },
+  "guard-auto-hybrid-mini-follow-warnings": {
+    "simulated_user": "rejects what is warned (automatic hybrid, gpt-4o-mini planner)",
+    "runs_dir": "runs-v0.3-tool-knowledge",
+    "repeats": [
+      "rep1"
+    ],
+    "experiments": {
+      "rep1": "a35492ce3cac087c780d6e128e4eb2bcd69f23f13e90a1240b98104f38753f87"
+    },
+    "pooled": {
+      "utility": {
+        "hits": 7,
+        "n": 16,
+        "rate": 0.4375,
+        "ci95": [
+          0.2309836333518552,
+          0.6682180439322347
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 64,
+        "n": 144,
+        "rate": 0.4444444444444444,
+        "ci95": [
+          0.36577544524654837,
+          0.5260006177830725
+        ]
+      },
+      "attack_success": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "attack_success_no_errors": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "attack_success_carried_out": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "silent_attack": {
+        "hits": 0,
+        "n": 144,
+        "rate": 0.0,
+        "ci95": [
+          0.0,
+          0.025984567266588023
+        ]
+      },
+      "goal_doable": {
+        "hits": 9,
+        "n": 9,
+        "rate": 1.0,
+        "ci95": [
+          0.7008472464490407,
+          1.0
+        ]
+      },
+      "runs": 169,
+      "errors": 0,
+      "incomplete": 0,
+      "usd": 0.14562540000000002,
+      "usd_by_role": {
+        "agent": 0.10275224999999999,
+        "planner": 0.026163450000000015,
+        "guard": 0.0167097
+      },
+      "tokens": 967318,
+      "seconds": 871.834237575531
+    },
+    "tasks_needing_a_change": {
+      "user_tasks": [
+        "user_task_0",
+        "user_task_2",
+        "user_task_3",
+        "user_task_4",
+        "user_task_11",
+        "user_task_12",
+        "user_task_13",
+        "user_task_14",
+        "user_task_15"
+      ],
+      "utility": {
+        "hits": 2,
+        "n": 9,
+        "rate": 0.2222222222222222,
+        "ci95": [
+          0.06322376231222723,
+          0.5474166563271946
+        ]
+      },
+      "utility_under_attack": {
+        "hits": 19,
+        "n": 81,
+        "rate": 0.2345679012345679,
+        "ci95": [
+          0.15562381855614316,
+          0.3375493417802955
+        ]
+      }
+    },
+    "guard": {
+      "clean_runs": 16,
+      "clean_requests": 12,
+      "attacked_runs": 144,
+      "attacked_requests": 174,
+      "attacker_warned": {
+        "hits": 59,
+        "n": 59,
+        "rate": 1.0,
+        "ci95": [
+          0.938868520215908,
+          1.0
+        ]
+      },
+      "legit_warned_clean": {
+        "hits": 3,
+        "n": 12,
+        "rate": 0.25,
+        "ci95": [
+          0.08894003962896138,
+          0.53231033912066
+        ]
+      },
+      "legit_warned_attacked": {
+        "hits": 35,
+        "n": 115,
+        "rate": 0.30434782608695654,
+        "ci95": [
+          0.22770286460600048,
+          0.39364184970279376
+        ]
+      },
+      "approved": 89,
+      "rejected": 97,
+      "judge_calls": 65,
+      "judge_model_calls": 130,
+      "judge_failures": 0,
+      "judge_seconds": 102.32677340018563,
+      "judge_cleared": 1
+    },
+    "per_repeat": {
+      "rep1": {
+        "utility": {
+          "hits": 7,
+          "n": 16,
+          "rate": 0.4375,
+          "ci95": [
+            0.2309836333518552,
+            0.6682180439322347
+          ]
+        },
+        "utility_under_attack": {
+          "hits": 64,
+          "n": 144,
+          "rate": 0.4444444444444444,
+          "ci95": [
+            0.36577544524654837,
+            0.5260006177830725
+          ]
+        },
+        "attack_success": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "attack_success_no_errors": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "attack_success_carried_out": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "silent_attack": {
+          "hits": 0,
+          "n": 144,
+          "rate": 0.0,
+          "ci95": [
+            0.0,
+            0.025984567266588023
+          ]
+        },
+        "goal_doable": {
+          "hits": 9,
+          "n": 9,
+          "rate": 1.0,
+          "ci95": [
+            0.7008472464490407,
+            1.0
+          ]
+        },
+        "runs": 169,
+        "errors": 0,
+        "incomplete": 0,
+        "usd": 0.14562540000000002,
+        "usd_by_role": {
+          "agent": 0.10275224999999999,
+          "planner": 0.026163450000000015,
+          "guard": 0.0167097
+        },
+        "tokens": 967318,
+        "seconds": 871.834237575531
+      }
+    }
+  }
+}
