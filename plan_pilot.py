@@ -1,6 +1,6 @@
-"""0.4's planner wording (docs/automatic-policy.md, "The planner's wording"): the 0.3 and the 0.4 wordings side by
-side, for both planners, on every user task of banking and Slack, and what each plan's A1 would decide on every
-request stored by the 0.3 automatic configurations. No agent runs.
+"""The planner wording tried for 0.4 (docs/automatic-policy.md, "The planner's wording"): the 0.3 wording and the
+tried one side by side, for both planners, on every user task of banking and Slack, and what each plan's A1 would
+decide on every request stored by the 0.3 automatic configurations. No agent runs.
 
     uv run python plan_pilot.py --dry-run    # the requests, those of the attacker's only A1 stops; no cost
     uv run python plan_pilot.py              # 2 planners x 2 wordings x 37 user tasks x 3 plans: 444 planner calls
@@ -27,7 +27,7 @@ from action_guard.automatic import AutomaticPolicy, load_tools
 from action_guard.labels import attacker_values, is_attackers
 from action_guard.metrics import Rate
 from action_guard.pipelines import priced
-from action_guard.planner import PLAN_SYSTEM, PLAN_SYSTEM_0_3, make_plan, plan_prompt, tool_catalog
+from action_guard.planner import PLAN_SYSTEM_0_3, PLAN_SYSTEM_TRIED_0_4, make_plan, plan_prompt, tool_catalog
 from action_guard.settings import BENCHMARK_VERSION, DEFAULT_MODEL, PLANNER_MODEL
 from action_guard.usage import BudgetExceeded, UsageMeter
 from fixes_replay import start_of, upto_call
@@ -35,7 +35,7 @@ from planner_replay import is_correct
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 RUNS = (("runs-v0.3-banking", "banking"), ("runs-v0.3", "slack"))
-WORDINGS = {"0.3": PLAN_SYSTEM_0_3, "0.4": PLAN_SYSTEM}
+WORDINGS = {"0.3": PLAN_SYSTEM_0_3, "0.4": PLAN_SYSTEM_TRIED_0_4}
 HARD = ("redirect_warnings", "irreversible_warnings", "signal_warnings")  # warnings the judge cannot clear
 
 
@@ -119,7 +119,7 @@ def main() -> int:
     )
     if args.dry_run:
         print("\nThe 0.4 wording adds, after 'an action may appear more than once.':\n")
-        print(PLAN_SYSTEM.split("more than once.", 1)[1].split("For each argument", 1)[0].strip())
+        print(PLAN_SYSTEM_TRIED_0_4.split("more than once.", 1)[1].split("For each argument", 1)[0].strip())
         print("\nExample plan prompt (slack user_task_6):\n")
         print(plan_prompt(suites["slack"].user_tasks["user_task_6"].PROMPT, catalogs["slack"], tools["slack"]))
         return 0
