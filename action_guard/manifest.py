@@ -26,6 +26,7 @@ RUN_FILES = (  # the code a run executes; reporting code (metrics, report.py, co
     "action_guard/judge.py",
     "action_guard/pipelines.py",
     "action_guard/planner.py",
+    "action_guard/runlock.py",
     "action_guard/settings.py",
     "action_guard/usage.py",
     "run_benchmark.py",

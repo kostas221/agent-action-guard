@@ -82,17 +82,16 @@ def automatic_policy(
     def planner(query: str):
         return make_plan(planner_client, model, query, catalog, tools)
 
-    judge = None
-    if mode == "hybrid":
-        client = meter.wrap_client(openai.OpenAI(max_retries=3), role="guard")
-        judge = Judge(
-            client,
-            priced(JUDGE_MODEL),
-            votes=HYBRID_JUDGE_VOTES,
-            system=GENERAL_SYSTEM,
-            key_header=GENERAL_KEY_HEADER,
-        )
+    judge = automatic_judge(meter) if mode == "hybrid" else None
     return AutomaticPolicy(suite_name, tools, planner, judge, mode)
+
+
+def automatic_judge(meter: UsageMeter) -> Judge:
+    """The automatic hybrid's judge (also asked by the offline pilots); its cost is recorded under "guard"."""
+    client = meter.wrap_client(openai.OpenAI(max_retries=3), role="guard")
+    return Judge(
+        client, priced(JUDGE_MODEL), votes=HYBRID_JUDGE_VOTES, system=GENERAL_SYSTEM, key_header=GENERAL_KEY_HEADER
+    )
 
 
 def guarded_agent(model: str, meter: UsageMeter, approver: Approver, policy=None) -> AgentPipeline:

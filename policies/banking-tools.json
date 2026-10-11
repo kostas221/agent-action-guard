@@ -62,10 +62,10 @@
   "update_user_info": {
     "effect": "acts",
     "roles": {
-      "first_name": "content",
-      "last_name": "content",
-      "street": "content",
-      "city": "content"
+      "first_name": "setting",
+      "last_name": "setting",
+      "street": "setting",
+      "city": "setting"
     }
   }
 }

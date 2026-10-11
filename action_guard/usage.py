@@ -4,6 +4,11 @@ Every chat completion goes through a wrapped OpenAI client. The tokens are added
 to the trace of the run being executed (key "usage", split by role: "agent" for
 the agent's own LLM, "guard" for a guard's LLM in later phases), so the cost of
 any configuration can be recomputed from the saved runs alone.
+
+The budget (--max-usd) stops runaway spending; it is not a billing guarantee. It is checked
+before each call, so the last call can pass it by its own cost (a fraction of a cent with
+gpt-4o-mini); it holds per process, not across processes running at once; and a response
+that reports no usage is not counted. The provider's own usage page is the record of spend.
 """
 
 import openai

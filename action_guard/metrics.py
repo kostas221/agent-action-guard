@@ -11,7 +11,7 @@ Three kinds of runs:
 
 import json
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import cache
@@ -212,6 +212,46 @@ def load_runs(runs_dir: Path, config: str, attack: str = ATTACK) -> list[dict]:
             }
         )
     return rows
+
+
+def unreadable_traces(runs_dir: Path, config: str, suite_name: str = "*") -> list[Path]:
+    """Traces load_runs had to skip: half-written (a benchmark is still running) or damaged."""
+    unreadable = []
+    for path in sorted((runs_dir / config).glob(f"rep*/*/{suite_name}/*/*/*.json")):
+        try:
+            json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            unreadable.append(path)
+    return unreadable
+
+
+def run_cells(suite) -> set[tuple[str, str | None]]:
+    """The runs a complete suite holds: each user task alone and under each injection task, each injection alone."""
+    users, injections = list(suite.user_tasks), list(suite.injection_tasks)
+    return {(u, None) for u in users} | {(u, i) for u in users for i in injections} | {(i, None) for i in injections}
+
+
+def cohort_problems(rows: list[dict], suites: Mapping, unreadable: Sequence[Path] = ()) -> list[str]:
+    """Why these runs cannot make a final table: in a repeat, a suite's run that is missing, interrupted (saved before
+    it was scored), there twice or not one of the suite's runs, or a trace that cannot be read. A table with any of
+    them is provisional: report.py, compare.py and bootstrap.py show it but never save it over a final one."""
+    problems = [f"a trace cannot be read: {path.as_posix()}" for path in unreadable]
+    groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for row in rows:
+        groups[(row["rep"], row["suite_name"])].append(row)
+    for (rep, suite_name), group in sorted(groups.items()):
+        expected = run_cells(suites[suite_name])
+        seen = Counter((row["user_task_id"], row["injection_task_id"]) for row in group)
+        where = f"{rep} {suite_name}"
+        if missing := expected - set(seen):
+            problems.append(f"{where}: {len(missing)} of {len(expected)} runs missing")
+        if interrupted := sum(row["utility"] is None for row in group):
+            problems.append(f"{where}: {interrupted} runs interrupted before they were scored")
+        if twice := sorted(str(cell) for cell, n in seen.items() if n > 1):
+            problems.append(f"{where}: runs saved twice {twice[:3]}")
+        if foreign := sorted(str(cell) for cell in set(seen) - expected):
+            problems.append(f"{where}: runs that are not the suite's {foreign[:3]}")
+    return problems
 
 
 def summarize(rows: list[dict]) -> dict[str, dict[str, Stats]]:

@@ -26,12 +26,14 @@ from action_guard.guard_metrics import GuardStats, summarize_guard
 from action_guard.labels import attacker_values, is_attackers
 from action_guard.metrics import (
     Stats,
+    cohort_problems,
     expected_runs,
     experiment_problems,
     load_runs,
     setup_problems,
     summarize,
     tasks_needing_a_change,
+    unreadable_traces,
 )
 from action_guard.settings import ATTACK, ATTACKS, BENCHMARK_VERSION
 
@@ -63,7 +65,7 @@ COLUMNS = (
     "attack success",
     "approvals per task (no attack)",
     "approvals per run (attack)",
-    "false warnings (no attack)",
+    "warnings on other requests (no attack)",
     "cost per run",
 )
 NOISE = (("attack_success", "attack success"), ("utility_under_attack", "utility under attack"), ("utility", "utility"))
@@ -119,7 +121,7 @@ def main() -> int:
     def attackers(suite_name: str, injection_task_id: str, request: dict) -> bool:
         return is_attackers(suite_name, request["args"], values(injection_task_id))
 
-    table, noise, payload, groups = [], [], {}, {}
+    table, noise, payload, groups, provisional = [], [], {}, {}, []
     for config, runs_dir in shown:
         user = USERS[config]
         try:
@@ -134,6 +136,9 @@ def main() -> int:
         if problems:  # left out of the table, so the table is not saved (save() needs every configuration)
             print(f"(left out: {config} is not one experiment: {'; '.join(problems)})")
             continue
+        if incomplete := cohort_problems(rows, {suite_name: suite}, unreadable_traces(runs_dir, config, suite_name)):
+            print(f"(provisional: {config}: {'; '.join(incomplete)})")
+            provisional.append(config)
         groups[config] = rows
         by_rep = summarize(rows)
         reps = sorted(by_rep)
@@ -196,7 +201,7 @@ def main() -> int:
     if out is None:
         print(f"\nNot saved: results/ holds comparisons of runs/ and runs-v*/ only, and this one read {args.runs_dir}/")
         return 0
-    save(payload, [config for config, _ in shown], out)
+    save(payload, [config for config, _ in shown], out, provisional)
     return 0
 
 
@@ -209,12 +214,15 @@ def results_path(runs_dir: Path, suite_name: str) -> Path | None:
     return Path("results") / version / name
 
 
-def save(payload: dict, wanted: list[str], out: Path) -> bool:
-    """Write the comparison only when every configuration asked for has runs: a partial table must never
-    replace saved results."""
+def save(payload: dict, wanted: list[str], out: Path, provisional: list[str] = ()) -> bool:
+    """Write the comparison only when every configuration asked for has complete runs: a partial or provisional
+    table must never replace saved results."""
     missing = [config for config in wanted if config not in payload]
     if missing:
         print(f"\nNot saved: no runs for {', '.join(missing)}; {out} is left as it was.")
+        return False
+    if provisional:
+        print(f"\nNot saved: runs not complete for {', '.join(provisional)}; {out} is left as it was.")
         return False
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
