@@ -23,7 +23,15 @@ from pathlib import Path
 from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.automatic import load_tools
-from action_guard.metrics import load_runs, run_kind, tasks_needing_a_change
+from action_guard.metrics import (
+    cohort_problems,
+    experiment_problems,
+    load_runs,
+    run_kind,
+    setup_problems,
+    tasks_needing_a_change,
+    unreadable_traces,
+)
 from action_guard.settings import ATTACK, ATTACKS, BENCHMARK_VERSION
 
 DRAWS = 10_000
@@ -117,13 +125,28 @@ def main() -> int:
         runs_dir = Path("runs") if main_baseline else Path(args.runs_dir)
         return [r for r in load_runs(runs_dir, config, args.attack) if r["suite_name"] == args.suite]
 
-    reference_rows = runs_of(args.reference)
+    problems = []  # any of them makes the table provisional: shown, never saved
+
+    def checked(config: str) -> list[dict]:
+        rows = runs_of(config)
+        runs_dir = Path("runs") if config == "baseline" and args.attack == ATTACK else Path(args.runs_dir)
+        unreadable = unreadable_traces(runs_dir, config, args.suite)
+        problems.extend(
+            f"{config}: {p}" for p in experiment_problems(rows) + cohort_problems(rows, {args.suite: suite}, unreadable)
+        )
+        if not rows:
+            problems.append(f"{config}: no runs")
+        groups[config] = rows
+        return rows
+
+    groups: dict[str, list[dict]] = {}
+    reference_rows = checked(args.reference)
     payload = {"reference": args.reference, "attack": args.attack, "suite": args.suite, "differences": {}}
     print(f"\n## Paired bootstrap over user tasks | {args.suite} | {args.attack} | minus {args.reference}\n")
     print("| configuration | metric | difference | 95% interval | tasks better / same / worse |")
     print("|---|---|---|---|---|")
     for config in args.configs:
-        rows = runs_of(config)
+        rows = checked(config)
         payload["differences"][config] = {}
         for metric, (kind, which, lower_is_better) in METRICS.items():
             tasks = covered[which]
@@ -146,6 +169,10 @@ def main() -> int:
         " it is no claim about banking at large."
     )
 
+    problems += setup_problems({config: rows for config, rows in groups.items() if rows})
+    if problems:
+        print("\nPROVISIONAL, not saved: " + "; ".join(problems))
+        return 0
     runs_dir = Path(args.runs_dir)
     if runs_dir.name.startswith("runs-v"):  # trials and mock runs never reach results/
         name = "bootstrap.json" if args.reference == "baseline" else f"bootstrap-vs-{args.reference}.json"

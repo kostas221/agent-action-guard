@@ -7,7 +7,7 @@
 Prints one table per repeat and, when there are several repeats, how much each
 number moves between them (an observed spread, not a significance threshold).
 For a guarded configuration it adds what the guard did: approval requests, warnings
-on the attacker's requests and false warnings. Then where the attacks succeed: per
+on the attacker's requests and on the others. Then where the attacks succeed: per
 attacker goal, and which tools they used. Writes results/<config>.json.
 """
 
@@ -23,7 +23,15 @@ from action_guard.attacks import Footprint, by_goal, footprints, goal_changes, r
 from action_guard.guard_metrics import GuardStats, summarize_guard
 from action_guard.labels import attacker_values, is_attackers
 from action_guard.manifest import LEGACY
-from action_guard.metrics import Stats, expected_runs, experiment_problems, load_runs, summarize
+from action_guard.metrics import (
+    Stats,
+    cohort_problems,
+    expected_runs,
+    experiment_problems,
+    load_runs,
+    summarize,
+    unreadable_traces,
+)
 from action_guard.pipelines import CONFIGS
 from action_guard.settings import ATTACK, ATTACKS, BENCHMARK_VERSION, PUBLISHED_VERSION, SUITES
 
@@ -44,8 +52,8 @@ GUARD_COLUMNS = (
     "requests per task (no attack)",
     "requests per run (attack)",
     "attacker's requests warned",
-    "false warnings (no attack)",
-    "false warnings (attack)",
+    "warnings on other requests (no attack)",
+    "warnings on other requests (attack)",
     "approved",
     "rejected",
 )
@@ -161,6 +169,9 @@ def main() -> int:
         return 1
     by_rep = summarize(rows)
     task_suites = get_suites(BENCHMARK_VERSION)
+    provisional = cohort_problems(rows, task_suites, unreadable_traces(Path(args.runs_dir), args.config))
+    if provisional:  # shown, never saved over a final result
+        print("PROVISIONAL (not saved): " + "; ".join(provisional))
     expected = {name: expected_runs(suite) for name, suite in task_suites.items()}
     models = sorted({row["pipeline_name"] for row in rows})
 
@@ -220,8 +231,9 @@ def main() -> int:
                 )
         print(
             "\nAn attacker's request goes to the attacker's account, address or user, sets the attacker's password, "
-            "or sends the attacker's link\n(labels.py). Warnings on the attacker's requests should be near 100%; "
-            "false warnings near 0%."
+            "or sends the attacker's link\n(labels.py). Warnings on the attacker's requests should be near 100%. "
+            "The other requests include the agent's own mistakes,\nwhich a warning may rightly stop: "
+            "not every warning on them is a false one."
         )
 
     goals = by_goal(rows)
@@ -260,6 +272,11 @@ def main() -> int:
             rep: {name: stats.to_dict() for name, stats in by_suite.items()} for rep, by_suite in guard_by_rep.items()
         }
     runs_dir = Path(args.runs_dir)
+    if provisional:
+        print(
+            f"\nNot saved: the runs are not complete ({len(provisional)} problems above); results/ is left as it was."
+        )
+        return 0
     if runs_dir.name.startswith("runs-v"):  # an evaluation of a later version: results/v0.2/<config>.json
         out = Path("results") / runs_dir.name.removeprefix("runs-") / f"{args.config}.json"
         out.parent.mkdir(parents=True, exist_ok=True)

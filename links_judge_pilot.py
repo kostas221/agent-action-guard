@@ -5,7 +5,8 @@ AutomaticPolicy.review (the code a live run uses). No agent runs.
     uv run python links_judge_pilot.py --dry-run     # how many requests, two prompts; no cost
     uv run python links_judge_pilot.py               # about 340 requests, two or three judge calls each
 
-Each request is reviewed in the hybrid as at the time it was made: the user's request, the workspace at the task's
+Fix 4 is switched on here (`links=True`); after this pilot the live configurations leave it off. Each request is
+reviewed in the hybrid as at the time it was made: the user's request, the workspace at the task's
 start, the messages up to the call and the stored plan (A1 is not the judge's to clear). Both 0.3 configurations'
 requests are used, and each is compared with what happened to it then: it ran, or it was rejected. Every request
 reviewed here gets fix 4's warning, so it now runs only if the judge clears it and no other warning stands.
@@ -124,7 +125,7 @@ def main() -> int:
         for number, item in enumerate(items, start=1):
             stored = item["plan"]
             planner = (lambda query, p=stored: Plan(**p)) if stored is not None else None
-            policy = AutomaticPolicy(SUITE, load_tools(SUITE), planner, judge, "hybrid")
+            policy = AutomaticPolicy(SUITE, load_tools(SUITE), planner, judge, "hybrid", links=True)
             policy.start_task(item["env"])
             review = policy.review(item["tool"], item["args"], item["query"], item["env"], item["messages"])
             row = {k: v for k, v in item.items() if k not in ("query", "env", "messages", "plan")}

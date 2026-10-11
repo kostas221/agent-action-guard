@@ -32,7 +32,7 @@ settings); the tools' implementations (an effect not declared is assumed not to 
 | Banking, automatic policy: attack success 0 of 432 in each configuration, against 49.8% for the undefended agent and 16.2% for AgentDojo's best built-in defense (tool filter) | `results/v0.3-banking/`, paired bootstrap over user tasks: -49.8 points [-66.4, -33.3] vs undefended | One attack template; 16 user tasks, 9 attacker goals and 3 repeats are not 432 independent trials: Wilson's 95% upper bound, 0.9%, describes these runs, not a deployment |
 | Banking: utility under attack about the undefended agent's | -0.4 points [-1.6, +0.8] | Clean utility on tasks needing a change: 9 of 27 vs 12-15 of 27 for the defenses |
 | Slack: attack success 27/315 by AgentDojo's count, 8/315 on the calls carried out (hybrid) | `results/v0.3/` | Utility loss is significant: -19.0 points [-36.5, -3.2] clean (hybrid) |
-| Known gaps are tested, not hidden | `tests/test_known_gaps.py` (strict xfail turns red when a gap closes) | Open in 0.4: a link in a message, for the rules (the hybrid asks the judge, pending its pilot) |
+| Known gaps are tested, not hidden | `tests/test_known_gaps.py` (strict xfail turns red when a gap closes); every known attack and its twin through every policy: `failure_matrix.py` | Open in 0.4: a link in a message, in the rules and the hybrid (a judge pilot found the judge warns on every link, the article's too: `results/v0.4/links-judge-pilot.json`) |
 
 Every result is compared with our own undefended agent under the same harness; published numbers of other work used
 other agents or benchmark versions and are not ranked against ours.
@@ -49,7 +49,8 @@ other agents or benchmark versions and are not ranked against ours.
   visiting one is asked about as an action, but nothing below the tool layer is controlled.
 - **Information flow.** Where a value came from is computed by finding it in earlier tool outputs (string
   occurrence), not by taint tracking. A value paraphrased, encoded or computed from protected data is not followed.
-  Message content is checked only for addresses (0.4, hybrid) and, in banking, for the user's own details.
+  Message content is not checked, except in banking for the user's own details; sending a link to a known member
+  passes (the judge, asked in a pilot, warned on every link alike).
 - **The judge as evidence.** The model judge is a source of warnings. Repeated votes are not independent evidence;
   some warnings it can never clear (the plan's, the account's signals, redirects, irreversible actions).
 - **Generality.** One agent model (`gpt-4o-mini-2024-07-18`), two AgentDojo suites. The tasks were inspected during

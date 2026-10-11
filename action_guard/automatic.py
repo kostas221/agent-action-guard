@@ -16,10 +16,11 @@ In the hybrid a model judge may clear an A0 warning, as it may clear W1-W3 in ba
   irreversible action (marked in the tools file) on a target the user did not name, known or not; and the
   account's own signals, per suite (SIGNALS): in banking W4 (an unusual amount for that account) and W5 (the
   user's own details in a payment's subject), from banking.py, fixed at the task's start.
-- In the hybrid only, a web or email address inside a message's content that the user did not type is the
-  judge's to read (fix 4): the judge is asked, and told where each such address first appeared. The rules
-  leave it alone: an attacker's link and an article's link come from the same channels, and no rule tells them
-  apart (docs/automatic-policy.md, "Fix 4").
+- Fix 4, off unless asked for (`links=True`, hybrid only): a web or email address inside a message's content that
+  the user did not type goes to the judge, told where the address first appeared. Its pilot on the stored Slack
+  requests found the judge warns on every such address, the article's as well as the attacker's (74 of 74
+  correct requests that had run), so the live configurations leave it off; the code stays so that the pilot can
+  be reproduced (docs/automatic-policy.md, "Fix 4: the pilot's results").
 
 The suite-specific code is who the user already deals with (CONTACTS), what the account itself says about the
 user (SIGNALS, SETTINGS) and, for evaluation only, how to recognize the attacker's requests (labels.py).
@@ -248,6 +249,7 @@ class AutomaticPolicy:
         planner: Callable[[str], Plan] | None = None,
         judge=None,
         mode: str = "rules",
+        links: bool = False,
     ) -> None:
         if mode not in self.MODES:
             raise ValueError(f"mode must be one of {self.MODES}")
@@ -259,6 +261,7 @@ class AutomaticPolicy:
         self.planner = planner  # None: no plan, so no A1
         self.judge = judge
         self.mode = mode
+        self.links = links  # fix 4, measured and left off (above)
         self.contacts = CONTACTS[suite_name]
         self.signals = SIGNALS.get(suite_name)
         self.settings = SETTINGS.get(suite_name)
@@ -313,8 +316,8 @@ class AutomaticPolicy:
         if entry.get("irreversible"):
             given_targets = [name for name in targets if args.get(name) is not None]
             irreversible = [IRREVERSIBLE.format(name) for name in given_targets if not named(args[name], query)]
-        # An address in a message the user did not type: the judge's to read, in the hybrid only (fix 4)
-        addresses = content_addresses(args, roles, query) if self.mode == "hybrid" else {}
+        # An address in a message the user did not type: the judge's to read, in the hybrid, when switched on (fix 4)
+        addresses = content_addresses(args, roles, query) if self.mode == "hybrid" and self.links else {}
         linked = [LINKED.format(name, shown(found)) for name, found in addresses.items()]
         clearable = [reason for reason in a0 if reason not in redirect] + linked
         signals = []  # what the account says (W4, W5 in banking): never cleared (fix 2)
