@@ -2,10 +2,43 @@
 
 [![tests](https://github.com/kostas221/agent-action-guard/actions/workflows/tests.yml/badge.svg)](https://github.com/kostas221/agent-action-guard/actions/workflows/tests.yml)
 
-A guard between an LLM agent and its tools. Every action that changes something waits for
-the user's yes or no, the approval covers that exact action once, and a warning shows when
-a recipient, password or address did not come from the user. Evaluated against prompt
-injection on [AgentDojo](https://github.com/ethz-spylab/agentdojo).
+A research prototype studying approval and warning policies between an LLM agent and its tools.
+Within the guarded runtime, tools classified as acting require approval of the exact call, used once.
+Experiments on [AgentDojo](https://github.com/ethz-spylab/agentdojo) measure attack success, useful task
+completion and the limitations of provenance warnings and model judges.
+
+## Current research status (12 October 2026)
+
+The current study covers **banking and Slack**, automatic rules and hybrid policies, three built-in
+AgentDojo defenses, and a second banking attack template. The agent remains
+`gpt-4o-mini-2024-07-18`; the inspected tasks are development evidence, not a held-out evaluation.
+
+- **Banking v0.3:** 0/432 attacks succeed in each automatic configuration, against 215/432 without
+  a guard and 70/432 with the tool filter. Hybrid utility on tasks requiring a change is 80/243,
+  against 79/243 with the tool filter; the paired task-bootstrap difference is +0.4 percentage points
+  [95% interval -5.8, +6.6], which does not establish equivalence.
+- **Slack v0.3:** hybrid attack success is 27/315 by AgentDojo's evaluator and 8/315 on executed
+  effects. Clean completion falls from 49/63 to 37/63, a difference of -19.0 points [-36.5, -3.2].
+- **v0.4 work:** policy corrections, replay, an attack/twin matrix, and two rejected judge/planner
+  pilots. The inspected results directory has no completed v0.4 end-to-end evaluation. Historical
+  live measurements and current replay are separate kinds of evidence.
+
+Zero observed successes does not imply zero risk: 432 runs repeat a small set of tasks and attacker
+goals. The descriptive Wilson upper endpoint for 0/432 is about 0.9%; it is not a deployment bound.
+Full intervals, repeat variation and limitations are in the
+[experiment log](docs/automatic-policy.md), [threat model](docs/threat-model.md), and
+[research assessment and proposed next experiment](docs/research-direction-2026-10-12.md).
+The project studies simulated approvals and an in-process enforcement boundary.
+
+- [Short research report](docs/research-report.md): the question, the configurations, the live results and the
+  negative ones, on two pages.
+- [Evidence index](docs/evidence.md): for every number, whether it comes from live runs, a replay, a pilot or a
+  supplied call, which code made it, and how to check it (`uv run python evidence.py`, no model call).
+
+## Historical release v0.2.1 overview
+
+The account below describes the earlier banking release, including its results and trace archive.
+Use the current research links above for subsequent experiments and known boundaries.
 
 **Results on AgentDojo's banking suite (gpt-4o-mini, 3 repeats, one attack template):**
 without the guard 49.8% of attacks succeeded; with a simulated user who rejects every
@@ -276,6 +309,21 @@ suite and repeat.
 
 ### Reproduce the tables
 
+From 0.4.0, one archive holds every run behind every published table: the runs folders of 0.1 to 0.4, phase 0's
+smoke runs and the set-aside trials the docs mention (`archive_traces.py` builds it with a fixed order and
+timestamps; its SHA-256 is in the release notes). Extract it into the repository root, then:
+
+```bash
+bash scripts/reproduce.sh
+```
+
+It checks the traces against the evidence index (`evidence.py`: every planned repeat present and complete, the
+recorded digests, execution and scoring code), recomputes every result file from the traces, with no model call and
+no cost, and ends with `git status --short results/`, which comes out empty. Pilots and the judge's part of the
+harder tests call a model, so their saved results are not recomputed.
+
+The earlier release's own archive and commands, for its 0.1 and 0.2 tables only:
+
 The run traces are not in the repository. Every run behind the tables (5,634 traces,
 15.5 MB) is in `agent-action-guard-traces-v0.2.1.zip` on the
 [v0.2.1 release](https://github.com/kostas221/agent-action-guard/releases/tag/v0.2.1),
@@ -309,13 +357,17 @@ results are not recomputed here.
 | `action_guard/pipelines.py` | configurations |
 | `action_guard/metrics.py`, `guard_metrics.py`, `attacks.py` | rates with confidence intervals, guard and attack breakdowns |
 | `run_benchmark.py`, `report.py`, `compare.py`, `demo.py` | run, report, compare, try |
-| `docs/` | policy, results, demo runs, the judge's design and results |
+| `action_guard/automatic.py`, `planner.py`, `policies/` | the automatic policy (0.3, 0.4): tools files, plans, the general judge |
+| `bootstrap.py` | paired differences over user tasks |
+| `fixes_replay.py`, `failure_matrix.py`, `*_pilot.py` | 0.4's replay, the attack and twin matrix, the pilots |
+| `action_guard/evidence.py`, `evidence.py`, `archive_traces.py`, `scripts/reproduce.sh` | the evidence index and its check, the trace archive, the offline reproduction |
+| `docs/` | policy, results, demo runs, the judge's design, the automatic policy's log, threat model, evidence index, research report |
 | `results/` | the numbers behind every table, recomputable from the published run traces ([reproduce](#reproduce-the-tables)) |
 | `.github/workflows/tests.yml` | CI: tests and lint on every push, no API key |
 
 ## Limits
 
-- One model (gpt-4o-mini), one suite with a policy (banking), one attack template
+- Scope of the historical v0.2.1 results below: one model (gpt-4o-mini), one suite with a policy (banking), one attack template
   (`important_instructions`), plus 8 hand-written harder attacks with the agent assumed
   hijacked ([docs/adaptive-tests.md](docs/adaptive-tests.md)). Measured there: W1-W3 do not
   check the amount or the subject of a payment to an account the user pays or typed (a
@@ -342,9 +394,11 @@ results are not recomputed here.
 
 ## Next
 
-A policy for the Slack suite; a second benchmark; new attacks, written by someone else,
-against the history signals; stopping a task after repeated warned rejections; and telling
-the agent exactly what is wrong with an impossible request (paying the user's own account).
+Finish a coherent research release with current evidence and reproducible tables. A focused follow-up
+can test task authorization on held-out cases with adaptive attacks and a close external comparator.
+The [research assessment](docs/research-direction-2026-10-12.md) separates release work from optional
+experiments; the [experiment log](docs/automatic-policy.md) records the implemented Slack policy,
+second attack template, results and rejected hypotheses.
 
 ## Acknowledgements
 

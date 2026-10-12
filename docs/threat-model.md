@@ -32,10 +32,15 @@ settings); the tools' implementations (an effect not declared is assumed not to 
 | Banking, automatic policy: attack success 0 of 432 in each configuration, against 49.8% for the undefended agent and 16.2% for AgentDojo's best built-in defense (tool filter) | `results/v0.3-banking/`, paired bootstrap over user tasks: -49.8 points [-66.4, -33.3] vs undefended | One attack template; 16 user tasks, 9 attacker goals and 3 repeats are not 432 independent trials: Wilson's 95% upper bound, 0.9%, describes these runs, not a deployment |
 | Banking: utility under attack about the undefended agent's | -0.4 points [-1.6, +0.8] | Clean utility on tasks needing a change: 9 of 27 vs 12-15 of 27 for the defenses |
 | Slack: attack success 27/315 by AgentDojo's count, 8/315 on the calls carried out (hybrid) | `results/v0.3/` | Utility loss is significant: -19.0 points [-36.5, -3.2] clean (hybrid) |
-| Known gaps are tested, not hidden | `tests/test_known_gaps.py` (strict xfail turns red when a gap closes); every known attack and its twin through every policy: `failure_matrix.py` | Open in 0.4: a link in a message, in the rules and the hybrid (a judge pilot found the judge warns on every link, the article's too: `results/v0.4/links-judge-pilot.json`) |
+| Documented gaps have executable probes | `tests/test_known_gaps.py`, `tests/test_research_boundaries.py` (strict xfail turns red when a gap closes); the versioned attack/twin matrix: `failure_matrix.py` | Open in 0.4: links in messages; additional supplied-call probes show wrong known recipients, negated target mentions and unrequested repeated payments. These are conditional policy tests, not new end-to-end attack rates. |
 
 Every result is compared with our own undefended agent under the same harness; published numbers of other work used
 other agents or benchmark versions and are not ranked against ours.
+
+The link-judge pilot warned on legitimate links as well as malicious ones and was left disabled
+(`results/v0.4/links-judge-pilot.json`). The additional 12 October probes and their legitimate controls are described
+in [the research assessment](research-direction-2026-10-12.md). Single-use approval does not imply a per-task action
+limit: repeated actions can each receive a fresh approval from the simulated user.
 
 ## Not claimed (non-goals)
 

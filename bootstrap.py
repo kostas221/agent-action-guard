@@ -23,6 +23,7 @@ from pathlib import Path
 from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.automatic import load_tools
+from action_guard.evidence import write_result
 from action_guard.metrics import (
     cohort_problems,
     experiment_problems,
@@ -177,9 +178,8 @@ def main() -> int:
     if runs_dir.name.startswith("runs-v"):  # trials and mock runs never reach results/
         name = "bootstrap.json" if args.reference == "baseline" else f"bootstrap-vs-{args.reference}.json"
         out = Path("results") / runs_dir.name.removeprefix("runs-") / name
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        print(f"\nSaved {out}")
+        if write_result(out, json.dumps(payload, indent=2)):
+            print(f"\nSaved {out}")
     return 0
 
 

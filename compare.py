@@ -22,6 +22,7 @@ from pathlib import Path
 from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.automatic import load_tools
+from action_guard.evidence import write_result
 from action_guard.guard_metrics import GuardStats, summarize_guard
 from action_guard.labels import attacker_values, is_attackers
 from action_guard.metrics import (
@@ -224,8 +225,8 @@ def save(payload: dict, wanted: list[str], out: Path, provisional: list[str] = (
     if provisional:
         print(f"\nNot saved: runs not complete for {', '.join(provisional)}; {out} is left as it was.")
         return False
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    if not write_result(out, json.dumps(payload, indent=2)):
+        return False
     print(f"\nSaved {out}")
     return True
 

@@ -1,0 +1,680 @@
+{
+ "built": "2026-10-12",
+ "benchmark": "v1.2.2",
+ "scoring": {
+  "identity": "a8700a1c36e8",
+  "agentdojo": "0.1.35",
+  "files": {
+   "action_guard/attacks.py": "488f5119b5bbd5674321ceea49ed01630d16681e4a880be8563906f8e555b023",
+   "action_guard/guard_metrics.py": "b5d34c3b793acec2e89ff410fb004a77f100c5efb160ee908d970db92a91545d",
+   "action_guard/labels.py": "0cecddf6bc540a51c96af235b5ad6e7553600bf04a9eec4e4c79a1aac9cb167c",
+   "action_guard/metrics.py": "047c0b52f20292d6ff15756cb54782cf53c9c7dae47768dfeba5ed92f68f5a2d",
+   "bootstrap.py": "9b38a365faf68df424aa5a35c441af1b4e4ac1898982eca4c2f36d78899a4e11",
+   "compare.py": "ef3a7fe0bdea5bb8bc8df2551b59645824de4206d1858c4eb01052c4d3c71014",
+   "report.py": "f426a3f146509a3bbaf82119adc08cb8883a59c7a1145bf017e402afbdb44497"
+  }
+ },
+ "experiments": [
+  {
+   "runs_dir": "runs",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "the undefended agent (0.1; Slack repeats 2-3 added in 0.3)",
+   "cells": [
+    {
+     "config": "baseline",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "506289546083ef9524a6370a3c6f264ed0002e0bf6be9e57882b8ef7dc8368e3"
+    },
+    {
+     "config": "baseline",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "a518cb705c2e0607e925647b6565ae32306ac79ceb9fe52eaeb29b33b09ff4d3"
+    },
+    {
+     "config": "baseline",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "87da489e5db854999028164ee23314b8f654c5a4e540177bd77ef9143f3ca4e1"
+    },
+    {
+     "config": "baseline",
+     "rep": "rep1",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "8f3705d92cf513923437bc286eb7874ed337ec82d052bdd6f68a9f32d9909693"
+    },
+    {
+     "config": "baseline",
+     "rep": "rep2",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "713454bd0e5887fe728da3cd9f9e521365614ecacc08a7b458eb76f466429d9c"
+    },
+    {
+     "config": "baseline",
+     "rep": "rep3",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "5f2ae2a3f28aea6d7019b7a6d8eda8ae492537cc29bca78f98b19aae97ffb7a7"
+    },
+    {
+     "config": "baseline",
+     "rep": "rep1",
+     "suite": "travel",
+     "traces": 167,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "5093ebf78fc32c944039f552b0bdd05411961f3f0b727796b7ae98c8cfb3c218"
+    },
+    {
+     "config": "baseline",
+     "rep": "rep1",
+     "suite": "workspace",
+     "traces": 614,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "c6303a6fa934b8ef3b04db51f24c6f5400886d4805d19f06ea3e3b1e2628d950"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "0.1: the hand-written policy with simulated users",
+   "cells": [
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "40954ab213949ddf9d9e74e5328e3685f03c367cf0f6fd547316053db635a05f"
+    },
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "9288c6513764e06908e85a638a8844a30506de5467058da130ded595f682f628"
+    },
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "f5de050baa97f2eb62b407ef55d0467120a37bbc5703b9d99fb1de8f1a4d8593"
+    },
+    {
+     "config": "guard-oracle",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "fb0ac4320aafc7c9314ec811fda96854ebbadea43aaa741951132ad5d265a339"
+    },
+    {
+     "config": "guard-oracle",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "73690de508ecbc962c12c2bc0d9ce0e737c7af918112b9a434cd06cdc6ac7380"
+    },
+    {
+     "config": "guard-oracle",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "f626f029730ef6de602fbed00434af749dad1710f1da5834763b6f7895aa06ce"
+    },
+    {
+     "config": "guard-reject-all",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "68473a4df7d227cddcae70a715b7115ab55a377e7b999e820010ff45a09cde5d"
+    },
+    {
+     "config": "guard-reject-all",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "69b3f8a602fb887ce3b4f8ea9dde689e04390b498a113714a5c91329c7e17fc1"
+    },
+    {
+     "config": "guard-reject-all",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "20b8b0058a60f2753726cd04895fe4e83ecfd2455ade32b63b87d423da615c6e"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "0.1: approve-all control",
+   "cells": [
+    {
+     "config": "guard-approve-all",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "b28ba15a25fade49f96b6f6d64a091521686964bbf46ce99e622aee7ecb40cb7"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs-v0.2",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "0.2: rules and hybrid",
+   "cells": [
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "22cc965dbddddc2f553cb742b1db1f539258a1e273eb46a7caf7008ac8ac5d99"
+    },
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "7fe1c94e77247ff97be2a76d0e7956ccf8baaddc5d967e3eb60daede3849b90f"
+    },
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "871ba94686c71f611d41d3b26a2af3819e314e9c55be858e80e5a572aa89e365"
+    },
+    {
+     "config": "guard-hybrid-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "8a5b41d8e20aea7610fcfe76c428b9da039eeda7a208f12e7cf20d93fb890a4d"
+    },
+    {
+     "config": "guard-hybrid-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "c4e7aa5caa9fc47303160717935c4381ee7eb316146bb9dcdffbc151141bb118"
+    },
+    {
+     "config": "guard-hybrid-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "4247c965bbf55c8dd21de140e595a51c3097282b890a77402bceb205550f7931"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs-v0.2",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "0.2: the judge alone",
+   "cells": [
+    {
+     "config": "guard-judge-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "2522ab7c58a6c2c4927e3be3e2aa730e5afb8425879b2552c632025d56c648e0"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs-v0.2.0",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "0.2.0: final rules and hybrid",
+   "cells": [
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "c5dd3f3a310186987feb40c764ccc9b458ec163b162519a57d808f6107053831"
+    },
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "f81386bda7b1e59b73c84d51245719a22378e4c78e323bec6e0b793f8b1045dd"
+    },
+    {
+     "config": "guard-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "aceb9ddcc608b4f34b847ad7200edb2e0b7abaf97f1f8f4d04839148f11c8c84"
+    },
+    {
+     "config": "guard-hybrid-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "ac318bbdce7fe6d52d24e9a5c114bd63163d5d14e08912748b12f0ed32d6f9e9"
+    },
+    {
+     "config": "guard-hybrid-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "a35a37fad5f90e117e2aa8fde9f64ec10e3a40c73c2cec67296f01e3898703ab"
+    },
+    {
+     "config": "guard-hybrid-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "d82f4aecbe3b5f3c273a2b8c9ee16fcd8fa80443510dcc0d947b7065113cfb1e"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs-v0.3",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "0.3: automatic policy on Slack",
+   "cells": [
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep1",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "b6b681c77c3ded2926b738b47285ce7060c96d69d0fbf687db6dedc113e2da32"
+    },
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep2",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "387b79f219e2d43aa3930b73057a5b593f96427875ca37c4fbfc9648004340c0"
+    },
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep3",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "289beb68ad90b676e31217fbb81c9467f97254269e2af57ecbd77c807c4cc5c1"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep1",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "ff6d95510e485ca13224d6a977acb440bf58f7d955e7cee74323adb257f65ae5"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep2",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "e9627ef5a68e06d8063042f93314264c1f9b1e301bcfa92c248094f21eaa69ff"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep3",
+     "suite": "slack",
+     "traces": 131,
+     "complete": true,
+     "execution": "legacy",
+     "digest": "5ba2bff735593361b62bb6a01e75c953a9d6ca425b48be3ff9b51bb34c304d42"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs-v0.3-banking",
+   "attack": "important_instructions",
+   "status": "published",
+   "what": "0.3: automatic policy on banking and AgentDojo's defenses",
+   "cells": [
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "b4ac92e461721c810e1c507827cfb74a1f8a8eb418647b7cb59b42baff7ccf20"
+    },
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "8fc75b999e19666807d7eed9757f1830b28a1b8b38e9dd17e02c5de59fa4fadf"
+    },
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "0a3f7da3a3abc63e7f860c8350fe8e3f693cbb606f35b4075c4f5b3f965402a7"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "c6b6a0da481c39a0763e0c9a75828eca71e9fa594a62a180d608185b03431426"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "cded73f3aec15aa892ad3ee40f2cfa08800494e81f92ddb94655148e4ed65d96"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "9e390b1b20707e007af42b271401d8ef5a28d16f70bdbd2a487ae157973936f8"
+    },
+    {
+     "config": "guard-auto-hybrid-mini-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "95919447475f84296d46e6382142266aeceb7f5ac182c0d12e419858ca81792d"
+    },
+    {
+     "config": "guard-auto-hybrid-mini-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "a4281e7a69c2a3de984472041739d9c4689152f8500ab93cf3e68e7b716d566f"
+    },
+    {
+     "config": "guard-auto-hybrid-mini-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "2782925bc43a",
+     "digest": "d518a410c492f6bc8dcbbb22b8736746b8fbb5f4eede96627f2896975bd7b022"
+    },
+    {
+     "config": "defense-tool_filter",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "56285d029a472098f1c91701c6e3da1304e710bc2e7c14875ce9011c82bb7b2c"
+    },
+    {
+     "config": "defense-tool_filter",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "49651df36a5ad6166f2caeddecc59ae979a4c8b1e527de789032caf560d38df4"
+    },
+    {
+     "config": "defense-tool_filter",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "c2d22f3f35fe4c6324c44472060683f6ae8b4dd0d7eecffac9f59854c77e3092"
+    },
+    {
+     "config": "defense-repeat_user_prompt",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "a708ce4516e85be84fea793a9eed3b3b88ea1f3ec067fbc3ec90378d44247c3f"
+    },
+    {
+     "config": "defense-repeat_user_prompt",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "feae787998c41f314cebe70bc27c15d04cb7d4579e2a94128c9a5bb10dbc00be"
+    },
+    {
+     "config": "defense-repeat_user_prompt",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "4df42ff033090e52e91c7a60712a51acf1f1d9d5558c9a260a059142ea54920f"
+    },
+    {
+     "config": "defense-spotlighting_with_delimiting",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "46dbe697b78c97951b845abd9ba8258705bacce29d1ff7cc469d82a890efec7e"
+    },
+    {
+     "config": "defense-spotlighting_with_delimiting",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "b3482523747a70fc49ecbb7bf8e88bda9c171498da306b1877d32adc2874112e"
+    },
+    {
+     "config": "defense-spotlighting_with_delimiting",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "97c1f9fff83ef8c9af67d519df8de4f6f5c76f8dd2575ccbbfc7d217fd830107"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs-v0.3-tool-knowledge",
+   "attack": "tool_knowledge",
+   "status": "published",
+   "what": "0.3: the second attack template",
+   "cells": [
+    {
+     "config": "baseline",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "8d03905c59fd3c9f29e2afaf84d24bbf75b281c6d0e0631b5c84751319fe451d"
+    },
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "744220becba7ec2d0a55c40d214a6bae62e4a54f2a320fa3b884e06acd76a6c0"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "abdd42c5a0c182b1a4b8cb9944aa4f8166d4c7a578e94ac40b0dcaa9625ee767"
+    },
+    {
+     "config": "guard-auto-hybrid-mini-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "a35492ce3cac",
+     "digest": "3d6693f4db44377cc1423adf9119f53dd54c4db94c716c584bc1b60ea89a24bc"
+    }
+   ]
+  },
+  {
+   "runs_dir": "runs-v0.4",
+   "attack": "important_instructions",
+   "status": "planned",
+   "what": "0.4: automatic policy on banking",
+   "cells": []
+  }
+ ],
+ "results": {
+  "results/adaptive-tests-signals.json": "870e56e08a11c612546df72a4ddd9daa6b18da19119e28a74a89c5faaad4a614",
+  "results/adaptive-tests.json": "0d70b473375f43dc0b86d0235a0509d8fc6004559944cba3181de19a3535be2a",
+  "results/auto-judge-pilot-banking.json": "f5e6fd9a7fbaf7847070f207f4f879b3c4629501fb29384c31e502f48f5cdf1e",
+  "results/baseline.json": "dd8512b607956b1c1cf8c7d218c0460ca47f6e29068284d5aabebcfc9387c338",
+  "results/comparison.json": "b5e7579412a6b1fb82bd294908fff27ee59e7d11be571cbcd84522473d9bff97",
+  "results/guard-approve-all.json": "8112f706a5d34fc03f639fe2075d5728d973c338ee82b4efdc09f14d3ed5bd89",
+  "results/guard-follow-warnings.json": "fb5d3897c2c9f9c8f38d46545a009834fa0501a704d4e6ae3f71f564af68c94c",
+  "results/guard-oracle.json": "a1c77eaac89ff4255c4f9b17f2316a4d404bb2cab6869fc5f8e8ae7d91991569",
+  "results/guard-reject-all.json": "6dc6ff6c0ea3f59c4815cef7832bd5dd5ecf4e857585731626b6c8e1aa4256f9",
+  "results/history-signals.json": "62cad6eb034cfd1ab6d8b7e96eb320737fd0c84db8d0a11ab0f87440dbeb117e",
+  "results/judge-pilot-1.json": "b652dd755c760ee15a3470ebc3e7be1bdf20bc49b2c8ee36a64056a0c17a9e88",
+  "results/judge-pilot-2.json": "25df6d084c8c36d0514b44ee66ad1dc74985c218bb30484399703dd14480bce6",
+  "results/judge-pilot-3.json": "3bc23e990dd14ff354888073309124416181c6ff6bc2b9f89b1d4a9b943e5bd5",
+  "results/judge-pilot-4.json": "56fe29af405ef7a7062cb0be3631c81bcdf52cd947fac888ec762634ecceea08",
+  "results/judge-pilot-5.json": "64e1915fc0d748ab280308e499248d2288a372d8410ae2108b28b3dbb585c430",
+  "results/phase0_smoke.json": "861823d175b7328de365fb30873cea015b0f9100847570e931a299a2a38d829e",
+  "results/planner-replay-gpt-6-luna.json": "d33ef09d7278565549a4b001b38897c130f1bcac9cecec931b6d648abcd9d054",
+  "results/planner-replay-gpt-6-sol.json": "12a0286272d33aaba5bcd4dda1fffeb935ebe4c481cf1d633c192e6b09361d6e",
+  "results/planner-replay.json": "427cc2cd1aac1d24c1a487fcb26c74f055974a21bc5b90e4dbcd606cc1b4f441",
+  "results/v0.2/comparison.json": "a772d48abd8a87ce095b8b0d7af3c0d1e15a9e514177456f8c8aa209ffa576a7",
+  "results/v0.2/guard-follow-warnings.json": "95d2cc8a0efdfb97c536d1558776ed51a0b00f589243df6239a7256561a72ecd",
+  "results/v0.2/guard-hybrid-follow-warnings.json": "bbb0b85f9f83cb271dbac9aa6909bfc11a29a2b9f5a5ba26c288cc28e70b614d",
+  "results/v0.2/guard-judge-follow-warnings.json": "79125fdb61754752b8b1db53bd1635defdf99a7b786f6282a5eccea7274fd7d2",
+  "results/v0.2.0/comparison.json": "7eb5fb04b2cf77248759f5db39b99c5f734ac9838f5a3dbfcbb868ec3d38eb65",
+  "results/v0.2.0/guard-follow-warnings.json": "4497d2ac71bf6875e228230043056f36f2bee40a43e3d68075ece8092073e9b0",
+  "results/v0.2.0/guard-hybrid-follow-warnings.json": "f611e73d5a417ffa97f71f6ea237d29e50ee9f2d63414ac0448a7322d595d96d",
+  "results/v0.3/bootstrap.json": "0dd890af77d0cac8774160a7f6e50f4ba39bfbbf9b9de8bdc499761c5f993369",
+  "results/v0.3/comparison-slack.json": "36d43784bac75274f67ea7439d397f8cdda781e3ff8f7e0f7fec2f0b8fd6d023",
+  "results/v0.3/guard-auto-follow-warnings.json": "6d84a4b4c1403863dd9e544d45d9380b5db449e1294ec6f797580f6458bb700c",
+  "results/v0.3/guard-auto-hybrid-follow-warnings.json": "1bbada365dccff111f2f8bcceec741ee290f435ca8e4e4468845c92bf4652e82",
+  "results/v0.3-banking/bootstrap-vs-defense-tool_filter.json": "a0245874c1d40ac21c8b38cf6a47b67c9686cf7d7b31c2dcec93c6b2d7f358e2",
+  "results/v0.3-banking/bootstrap.json": "3b2b0b786b71f566370e284655c42d8b22a78fe7588af28e589515ad0b513033",
+  "results/v0.3-banking/comparison.json": "f98792211bccb135bb435f1d611efc17a8f9673f4372ff1fdb04fd0eb36cb114",
+  "results/v0.3-banking/defense-repeat_user_prompt.json": "5854ec068233380f3dc0573eb704d3649b22efc497762c93f68a6381024e5db1",
+  "results/v0.3-banking/defense-spotlighting_with_delimiting.json": "570c2799021b1c2bd4616eb33d74858144adbf846fdddc96dae1bad88e8b65a4",
+  "results/v0.3-banking/defense-tool_filter.json": "91e36eb2253fbd46037780348ff0d583b9befcef2426e17f3e5ae863c269e1e5",
+  "results/v0.3-banking/guard-auto-follow-warnings.json": "49146073697aaaea27fa4520bbaba61a04a45c785ab39a1abd78c9d82d09bda3",
+  "results/v0.3-banking/guard-auto-hybrid-follow-warnings.json": "a5e1a46275d20891154a68ffa570b2716193a326cc5d91ec1ba60345cac1c28c",
+  "results/v0.3-banking/guard-auto-hybrid-mini-follow-warnings.json": "a3a08ccfd6831024c657924c7bba376c67789779b15c12328568f33875462697",
+  "results/v0.3-tool-knowledge/baseline.json": "599d9087e75fc5ecbdeeb1b2a1b4138007d8e0df4bab614263078fa784b853d6",
+  "results/v0.3-tool-knowledge/bootstrap.json": "2b4a50af0f4844c86b4bc15a718ee26e565cece33a7ce774a0a566b6a6fec0b2",
+  "results/v0.3-tool-knowledge/comparison.json": "004d88939ccfe62b503066c6ac15b8d136e179f686f232e2cee4ddcb3dc8e6e4",
+  "results/v0.3-tool-knowledge/guard-auto-follow-warnings.json": "26f97abb91a83ede6e484957a62869e06fb544b4dabb9ac04330eba4ef241d9e",
+  "results/v0.3-tool-knowledge/guard-auto-hybrid-follow-warnings.json": "a4c1c77aba9cd8aab16f6ad79f9d17a5bf553e9ae0681d702fc6a924451a9813",
+  "results/v0.3-tool-knowledge/guard-auto-hybrid-mini-follow-warnings.json": "85821efb6b81ec1ab94ce30344ba9c95c5f0f9daece9a3a70a66982db23d28a7",
+  "results/v0.4/failure-matrix.json": "abc9f298e4a55b0af0c8f434c61867c5f83ba54e88412db8649dee3ab16b8d98",
+  "results/v0.4/fixes-replay.json": "984f9701de31979a4e4c3de456e7651f57b1532e366672a7afb7058e595c5780",
+  "results/v0.4/links-judge-pilot.json": "b014fecd44dfd6e583ba451e55941880ecf47e0353b3e07b0feb80ba7d5f4743",
+  "results/v0.4/plan-pilot.json": "9769cb3a31f0a5553155797052c3fa4aefc8ce1bcff3c7819a49e5eb89d6a372"
+ }
+}

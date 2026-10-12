@@ -326,7 +326,7 @@ class AutomaticPolicy:
             signals = self.signals[1](tool, args, query, env, history)
         plan = self.plan_for(query)
         a1 = [] if plan is None or any(action["tool"] == tool for action in plan.actions) else [UNEXPECTED]
-        facts = argument_facts(args, roles, query, known, messages, addresses)
+        facts = argument_facts(checked, roles, query, known, messages, addresses)  # an empty field of an update: none
         key_fields = [name for name, role in roles.items() if role in KEY_ROLES]
         key_fields += [ADDRESS_FACT.format(name) for name in addresses]
         given = {name: value for name, value in args.items() if value is not None}

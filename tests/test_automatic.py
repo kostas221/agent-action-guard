@@ -385,6 +385,9 @@ def test_an_empty_field_of_an_update_is_no_change_and_is_not_warned():
     address = {"first_name": "", "last_name": "", "street": "Elm Street 1", "city": "Boston"}
     query = "Update my address to Elm Street 1, Boston."
     assert rules.review("update_user_info", address, query, env, []).warnings == []
+    # and the user is not told that the empty recipient will be set: the field stays as it is
+    summary = rules.review("update_scheduled_transaction", rent, "Raise my rent to 1200.", env, []).summary
+    assert "empty" not in summary
 
 
 def test_a_new_payment_to_an_empty_recipient_is_still_warned():

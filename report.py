@@ -20,6 +20,7 @@ from pathlib import Path
 from agentdojo.task_suite.load_suites import get_suites
 
 from action_guard.attacks import Footprint, by_goal, footprints, goal_changes, reference_tools
+from action_guard.evidence import write_result
 from action_guard.guard_metrics import GuardStats, summarize_guard
 from action_guard.labels import attacker_values, is_attackers
 from action_guard.manifest import LEGACY
@@ -283,8 +284,8 @@ def main() -> int:
     elif runs_dir != Path("runs"):  # trials and mock runs must not overwrite the real results
         print(f"\nNot saved: results/ holds reports of runs/ and runs-v*/ only, and this one read {args.runs_dir}/")
         return 0
-    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"\nSaved {out}")
+    if write_result(out, json.dumps(payload, indent=2)):
+        print(f"\nSaved {out}")
     return 0
 
 

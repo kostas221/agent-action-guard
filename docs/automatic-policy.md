@@ -1318,3 +1318,25 @@ the address update unwarned; in 0.4 that update is a setting taken from a file.
 19. **W4 and W5** warn on at most 2% of the other requests, and each request they stop is an agent mistake (a wrong
     amount, a wrong account, or the user's details in a subject), checked by hand.
 20. **No judge failure**, and tokens per run within 15% of 0.3's for each configuration.
+
+### Evidence identity and the research release (2026-10-12, no decision changes)
+
+After a second research review (`docs/research-direction-2026-10-12.md`; its three new boundary cases, a wrong
+known recipient, a negated name and repeated payments, are strict expected failures in
+`tests/test_research_boundaries.py`), the release work its priorities 1 and 2 ask for:
+
+- **The evidence index** (`docs/evidence.md`, `results/evidence.json`, `evidence.py`). The expected matrix of every
+  published experiment (runs folder, configurations, attack, repeats per suite; `action_guard/evidence.py`,
+  `PLANNED`), so a planned repeat missing altogether is found, which the per-repeat completeness check cannot see;
+  a digest of each repeat's traces (paths and bytes); the execution identity from the manifests; and a scoring
+  identity, the reporting code kept apart from the run code, so a changed scorer is found too. `evidence.py` checks
+  all of it without a model call; every one of the 59 published repeat-suites passes. A result file the index lists
+  is never changed by `report.py`, `compare.py` or `bootstrap.py` (writing the same content again is allowed): a
+  correction goes to a new results version.
+- **Reproduction** (`scripts/reproduce.sh`): every one of the 35 result files made from traces comes out byte for
+  byte the same, from the traces alone. The trace archive (`archive_traces.py`) holds every planned runs folder,
+  phase 0's smoke runs and the set-aside trials.
+- **One version label**: 0.4.0 in `pyproject.toml` and `uv.lock` (it was still 0.2.1). The 0.4 live runs record it,
+  since `uv.lock` is part of the run fingerprint.
+- **A short research report** (`docs/research-report.md`) with the configuration matrix, the live results and the
+  negative ones.
