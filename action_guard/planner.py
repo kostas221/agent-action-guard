@@ -273,6 +273,13 @@ def typed(value, query: str, *, secret: bool = False) -> bool:
     return any(user_supplied(form, query, password=secret) for form in value_forms(value))
 
 
+def items(value) -> list:
+    """The values one argument holds: a list of recipients or participants is checked one by one, since each of
+    them is someone the action goes to (written whole, ['a@x.com', 'b@y.com'] is in no message). An empty list
+    holds none: the action goes to nobody through that argument."""
+    return list(value) if isinstance(value, list | tuple) else [value]
+
+
 def floor_reasons(
     tool: str,
     args: Mapping,
@@ -283,13 +290,14 @@ def floor_reasons(
 ):
     """A0: who or where the action goes, secrets, and (0.4) the user's own settings; the same for every plan. Only an
     argument the call leaves out (None) is skipped: an empty target or secret is neither typed nor known, so it is
-    warned. A setting passes when typed or equal to what the account holds already (`current`, by argument)."""
+    warned. A target holding a list passes when every item in it is typed or known. A setting passes when typed or
+    equal to what the account holds already (`current`, by argument)."""
     reasons = []
     for name, role in roles.items():
         value = args.get(name)
         if value is None:
             continue
-        if role == "target" and not typed(value, query) and not known(str(value)):
+        if role == "target" and any(not typed(item, query) and not known(str(item)) for item in items(value)):
             reasons.append(f"The {name} is not in your message and is not someone you already deal with.")
         if role == "secret" and not typed(value, query, secret=True):
             reasons.append(f"You did not type this {name}.")

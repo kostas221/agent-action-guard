@@ -18,6 +18,7 @@ from pathlib import Path
 from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.banking import attacker_values, is_attackers, paid_amounts, signal_reasons
+from action_guard.evidence import write_result
 from action_guard.settings import BENCHMARK_VERSION
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -85,8 +86,8 @@ def main() -> int:
     for item in changed:
         print(f"  {item['runs']} {item['trace']} {item['tool']} {item['signals']}")
     out = Path("results/history-signals.json")
-    out.write_text(json.dumps({"by_config": by_config, "decisions_changed": changed}, indent=2), encoding="utf-8")
-    print(f"Saved {out}")
+    if write_result(out, json.dumps({"by_config": by_config, "decisions_changed": changed}, indent=2)):
+        print(f"Saved {out}")
     return 0
 
 

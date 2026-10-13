@@ -25,6 +25,7 @@ from pathlib import Path
 from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.automatic import AutomaticPolicy, load_tools
+from action_guard.evidence import write_result
 from action_guard.judge import Verdict
 from action_guard.labels import attacker_values, is_attackers
 from action_guard.planner import Plan
@@ -162,10 +163,9 @@ def main() -> int:
     for row in needs_judge:
         print(f"  {row['config']} {row['whose']} {row['trace']} {row['tool']} {json.dumps(row['args'])[:90]}")
     out = Path("results") / "v0.4" / "fixes-replay.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
     payload = {"summary": summary, "changed": changed, "needs_judge": needs_judge}
-    out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"\nSaved {out}")
+    if write_result(out, json.dumps(payload, indent=2)):
+        print(f"\nSaved {out}")
     return 0
 
 

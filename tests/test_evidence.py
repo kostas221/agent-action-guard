@@ -93,3 +93,13 @@ def test_a_published_result_is_never_changed_but_may_be_written_again_as_it_is(t
     assert not write_result(out, '{"a": 2}', index)  # a change to a published table
     assert out.read_text(encoding="utf-8") == '{"a": 1}' and "Not saved" in capsys.readouterr().out
     assert write_result(Path("results") / "v9" / "new.json", '{"b": 1}', index)  # not published yet
+
+
+def test_a_rebuilt_index_keeps_the_scorers_it_recorded_before():
+    """0.5: the scorer changed (bounds.py, barriers.py, the outage check) and every result reproduced: the index keeps
+    the identity the earlier results were made with."""
+    first = {"built": "2026-10-12", "scoring": {"identity": "s1", "files": {}}}
+    assert evidence.scoring_history(first, {"identity": "s1", "files": {}}) == []
+    second = {**first, "scoring_history": evidence.scoring_history(first, {"identity": "s2", "files": {}})}
+    assert second["scoring_history"] == [{"identity": "s1", "files": {}, "until": "2026-10-12"}]
+    assert evidence.scoring_history({}, {"identity": "s1", "files": {}}) == []

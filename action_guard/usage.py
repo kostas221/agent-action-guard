@@ -53,13 +53,13 @@ class UsageMeter:
                 raise BudgetExceeded(f"stopped at ${self.usd:.4f} (limit ${self.max_usd})")
             completion = create(*args, **kwargs)
             if completion.usage is not None:
-                self.record(role, kwargs["model"], completion.usage)
+                self.record(role, kwargs["model"], completion.usage, served_by(completion))
             return completion
 
         client.chat.completions.create = counted_create
         return client
 
-    def record(self, role: str, model: str, usage) -> None:
+    def record(self, role: str, model: str, usage, served: str | None = None) -> None:
         details = usage.prompt_tokens_details
         cached = (details.cached_tokens or 0) if details else 0
         usd = cost_usd(model, usage.prompt_tokens, cached, usage.completion_tokens)
@@ -75,3 +75,15 @@ class UsageMeter:
         run_usage["cached_tokens"] += cached
         run_usage["completion_tokens"] += usage.completion_tokens
         run_usage["usd"] += usd
+        if served and served not in run_usage.setdefault("served", []):
+            run_usage["served"].append(served)
+
+
+def served_by(completion) -> str | None:
+    """The model that answered, as the provider names it, and its system fingerprint when given (0.5). A name without
+    a date ("gpt-6-luna") may point to another model later: the traces say which one answered."""
+    model = getattr(completion, "model", None)
+    if not isinstance(model, str):
+        return None
+    fingerprint = getattr(completion, "system_fingerprint", None)
+    return f"{model} ({fingerprint})" if isinstance(fingerprint, str) and fingerprint else model

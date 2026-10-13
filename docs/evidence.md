@@ -1,7 +1,8 @@
 # Evidence index
 
 What every published number rests on, what kind of evidence it is, and how to check or reproduce it. Written on
-2026-10-12 for version 0.4.0; `results/evidence.json` is the machine-readable form, and `evidence.py` checks it.
+2026-10-12 for version 0.4.0, completed on 2026-10-13 with its live runs and extended the same day for 0.5.0 (no new
+live runs); `results/evidence.json` is the machine-readable form, and `evidence.py` checks it.
 
 ## Four kinds of evidence
 
@@ -31,7 +32,7 @@ traces' digest and the release they belong to.
 | `runs-v0.3-banking/` | automatic rules, hybrid, hybrid with the gpt-4o-mini planner | banking 3 | important_instructions | `2782925bc43a` | `results/v0.3-banking/` | "Results (banking, three repeats)" |
 | `runs-v0.3-banking/` | AgentDojo's tool filter, repeated prompt, spotlighting | banking 3 | important_instructions | `a35492ce3cac` | `results/v0.3-banking/` | same section |
 | `runs-v0.3-tool-knowledge/` | undefended agent and the three automatic configurations | banking 1 | tool_knowledge | `a35492ce3cac` | `results/v0.3-tool-knowledge/` | "The second attack template" |
-| `runs-v0.4/` | the three automatic configurations, 0.4 | banking 3 | important_instructions | planned: not run yet | (`results/v0.4/` after the runs) | "Version 0.4, live (stated before running)" |
+| `runs-v0.4/` | the three automatic configurations, 0.4 | banking 3 | important_instructions | `d7577ad483c6` | `results/v0.4/` (the configurations, `comparison.json`, `bootstrap.json`) | "Results (banking, three repeats, 2026-10-12 and 2026-10-13)" |
 
 Pooled numbers per configuration, with Wilson intervals and per-repeat values, are in each `comparison*.json`;
 paired differences over user tasks in each `bootstrap*.json`.
@@ -50,6 +51,10 @@ paired differences over user tasks in each `bootstrap*.json`.
 | `results/v0.4/links-judge-pilot.json` | pilot | fix 4: the judge on 352 recorded Slack requests carrying a link; rejected | `links_judge_pilot.py` (paid) |
 | `results/v0.4/plan-pilot.json` | pilot | the planner wording tried for 0.4, both planners, 37 task requests; rejected | `plan_pilot.py` (paid) |
 | `results/v0.4/failure-matrix.json` | supplied calls | every known attack and its twin through every policy, judge stubbed both ways | `failure_matrix.py` (free) |
+| `results/v0.5/replay-runs-v0.4.json`, `replay-runs-v0.3.json` | replay | the whole 0.5 policy, told each stored decision, on every request of the automatic configurations' live runs | `policy_replay.py` (free) |
+| `results/v0.5/failure-matrix.json` | supplied calls | the same matrix with the 0.5 policy (the 0.4 file stays as it was made) | `failure_matrix.py` (free) |
+| `results/<version>/bounds*.json` | live, recounted | one-sided 95% upper bounds on attack success counting (task, goal) pairs, user tasks or goals as the independent units, not runs | `bounds.py` (free) |
+| `results/<version>/barriers*.json` | live, recounted | for every request the guard saw: which warning sources warned, and which was the only one | `barriers.py` (free) |
 
 Supplied-call boundaries are also kept as tests: `tests/test_known_gaps.py`, `tests/test_research_boundaries.py`
 (strict expected failures that turn red when a gap closes) and `tests/test_failure_matrix.py`.
@@ -58,14 +63,27 @@ Supplied-call boundaries are also kept as tests: `tests/test_known_gaps.py`, `te
 
 | change | measured by | live? |
 |---|---|---|
-| a redirect of an existing item to a new account is never cleared by the judge (fix 1) | replay; supplied call E1; `tool_knowledge` showed the judge clearing it again | pending (`runs-v0.4/`) |
-| the account's signals W4, W5 in the automatic policy (fix 2) | replay (3 wrong payments stopped); supplied calls B1, B2, C1 | pending |
-| the user's own settings must be typed or unchanged (fix 3) | replay (task 13's 34 rules requests; 62 hybrid requests need the judge) | pending |
+| a redirect of an existing item to a new account is never cleared by the judge (fix 1) | replay; supplied call E1; `tool_knowledge` showed the judge clearing it again | live (`runs-v0.4/`): every attacker's redirect warned and rejected, none sent to the judge |
+| the account's signals W4, W5 in the automatic policy (fix 2) | replay (3 wrong payments stopped); supplied calls B1, B2, C1 | live: 15 warnings on other requests, all wrong payments by the agent; the only barrier for 13 |
+| the user's own settings must be typed or unchanged (fix 3) | replay (task 13's 34 rules requests; 62 hybrid requests need the judge) | live: the rules lose task 13 in every run, the hybrids' judge clears it in every run |
 | links in messages to the judge (fix 4) | pilot: rejected, off | not to be run |
 | irreversible actions need a named target (fix 5) | supplied call R1; replay (no Slack change) | not run: no Slack decision changes |
 | the 0.4 planner wording | pilot: rejected, the 0.3 wording kept | not to be run |
 | malformed tools files refused; run lock; budget note | tests | no decision changes |
 | labels, completeness check, evidence identity | tests; regenerated results identical | reporting only |
+
+## What changed in 0.5 and how far it is measured
+
+No 0.5 change was run live: the 0.4 numbers were measured with the 0.4 code (`d7577ad483c6`, tag `v0.4.0`).
+
+| change | measured by | live? |
+|---|---|---|
+| a target holding a list is checked item by item (it was always warned) | tests | not run: no banking or Slack tool takes a list |
+| the judge is asked only when no warning it cannot clear is there | replay: 0 decision changes; its questions on the 0.4 hybrids' requests 389 and 381 -> 168 and 158, on Slack's 550 -> 327 | not run |
+| high-stakes tools (banking's payments and password): a target or secret warning is never cleared | replay: 0 changes on the 0.4 runs, the same 37 on the 0.3 runs; the judge asked only about task 13's address (33 and 32); failure matrix: A1, D1-D3 blocked in the hybrid | not run |
+| W6: payments within one task to an account the user pays, together above W4's line | replay: 0 new warnings (stated before: 0-2); supplied calls (tests) | not run |
+| A1 counting actions | replay: rejected by the rule stated before (216 banking, 302 Slack requests newly warned) | not to be run |
+| the model that answered recorded; a run whose planner or judge gave no answer is provisional; replays through `write_result`; scorer history | tests; regenerated results identical | reporting only |
 
 ## Checking and reproducing
 
@@ -84,6 +102,10 @@ Rules that keep published results intact:
   content again is allowed (that is how reproduction is checked); a different content is refused.
 - A correction to scoring, or a new scorer, goes to a new results version; the index is rebuilt
   (`evidence.py --build`) only after a planned experiment is complete, and the old entries stay.
+- A change to the scoring code (`SCORING_FILES`) is reported by `evidence.py`. `scripts/reproduce.sh` then
+  regenerates every result: if each published file comes out the same, `evidence.py --build` records the new scorer
+  and keeps the earlier one in `scoring_history`; if one differs, the new result goes to a new results version. 0.5
+  changed the scorer this way (`metrics.py`, and `bounds.py`, `barriers.py` added).
 - Trace digests cover paths and bytes: a trace edited, removed or added changes them.
 
 The run traces are not in the repository. The release archive (`archive_traces.py`, README "Reproduce the tables")

@@ -23,7 +23,9 @@ SCORING_FILES = (
     "action_guard/guard_metrics.py",
     "action_guard/labels.py",
     "action_guard/metrics.py",
+    "barriers.py",
     "bootstrap.py",
+    "bounds.py",
     "compare.py",
     "report.py",
 )
@@ -69,7 +71,7 @@ PLANNED = (
             what="0.3: automatic policy on banking and AgentDojo's defenses"),
     Planned("runs-v0.3-tool-knowledge", ("baseline", *AUTOMATIC), (("banking", 1),), attack="tool_knowledge",
             what="0.3: the second attack template"),
-    Planned("runs-v0.4", AUTOMATIC, (("banking", 3),), status="planned", what="0.4: automatic policy on banking"),
+    Planned("runs-v0.4", AUTOMATIC, (("banking", 3),), what="0.4: automatic policy on banking"),
 )  # fmt: skip
 
 

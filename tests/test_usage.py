@@ -50,3 +50,27 @@ def test_meter_stops_once_the_budget_is_spent():
     client.chat.completions.create(model=MODEL, messages=[])  # costs $0.00021
     with pytest.raises(BudgetExceeded):
         client.chat.completions.create(model=MODEL, messages=[])
+
+
+def test_the_model_that_answered_is_recorded_once_per_run(tmp_path):
+    """0.5: a model name without a date can point to another model later; the trace keeps which one answered."""
+    meter = UsageMeter(max_usd=1.0)
+    usage = SimpleNamespace(prompt_tokens=10, completion_tokens=1, prompt_tokens_details=None)
+    answers = iter(["gpt-6-luna-2026-09-30", "gpt-6-luna-2026-09-30", "gpt-6-luna-2026-10-20"])
+
+    def create(**kwargs):
+        return SimpleNamespace(usage=usage, model=next(answers), system_fingerprint="fp_1")
+
+    client = meter.wrap_client(SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))), "p")
+    with TraceLogger(
+        delegate=OutputLogger(str(tmp_path)),
+        suite_name="banking",
+        user_task_id="user_task_0",
+        injection_task_id=None,
+        attack_type="none",
+        pipeline_name=MODEL,
+    ) as logger:
+        for _ in range(3):
+            client.chat.completions.create(model="gpt-6-luna", messages=[])
+        served = logger.context["usage"]["p"]["served"]
+    assert served == ["gpt-6-luna-2026-09-30 (fp_1)", "gpt-6-luna-2026-10-20 (fp_1)"]

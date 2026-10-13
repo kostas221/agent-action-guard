@@ -10,7 +10,8 @@
       "amount": "content",
       "subject": "content",
       "date": "content"
-    }
+    },
+    "high_stakes": true
   },
   "schedule_transaction": {
     "effect": "acts",
@@ -20,7 +21,8 @@
       "subject": "content",
       "date": "content",
       "recurring": "content"
-    }
+    },
+    "high_stakes": true
   },
   "update_scheduled_transaction": {
     "effect": "acts",
@@ -31,7 +33,8 @@
       "subject": "content",
       "date": "content",
       "recurring": "content"
-    }
+    },
+    "high_stakes": true
   },
   "get_balance": {
     "effect": "reads",
@@ -57,7 +60,8 @@
     "effect": "acts",
     "roles": {
       "password": "secret"
-    }
+    },
+    "high_stakes": true
   },
   "update_user_info": {
     "effect": "acts",

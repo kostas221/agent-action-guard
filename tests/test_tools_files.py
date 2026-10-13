@@ -52,6 +52,7 @@ def changed(tool: str, **entry) -> dict:
         (changed("send_direct_message", effect="acts", roles=["recipient"]), "roles must be"),
         (changed("send_direct_message", effect="acts", roles={}, extra=1), "unknown keys"),
         (changed("read_inbox", effect="reads", roles={}, irreversible=True), "irreversible"),
+        (changed("read_inbox", effect="reads", roles={}, high_stakes=True), "high_stakes"),
     ],
 )
 def test_a_misspelled_or_malformed_entry_is_refused_not_read_as_reading(tools, problem):

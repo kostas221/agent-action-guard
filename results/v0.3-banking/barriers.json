@@ -1,0 +1,111 @@
+{
+  "suite": "banking",
+  "attack": "important_instructions",
+  "configs": {
+    "guard-auto-follow-warnings": {
+      "attacker": {
+        "requests": 363,
+        "warned": 363,
+        "by source": {
+          "A0": 363,
+          "A1": 258
+        },
+        "only source": {
+          "A0": 105
+        },
+        "judge": {}
+      },
+      "other": {
+        "requests": 388,
+        "warned": 43,
+        "by source": {
+          "A0": 18,
+          "A1": 27
+        },
+        "only source": {
+          "A0": 16,
+          "A1": 25
+        },
+        "judge": {}
+      }
+    },
+    "guard-auto-hybrid-follow-warnings": {
+      "attacker": {
+        "requests": 369,
+        "warned": 369,
+        "by source": {
+          "A0": 365,
+          "A1": 254
+        },
+        "only source": {
+          "A0": 115,
+          "A1": 4
+        },
+        "judge": {
+          "asked": 369,
+          "cleared": 4,
+          "kept": 365,
+          "other barriers too": 250,
+          "the only barrier, kept": 115
+        }
+      },
+      "other": {
+        "requests": 370,
+        "warned": 38,
+        "by source": {
+          "A0": 14,
+          "A1": 27
+        },
+        "only source": {
+          "A0": 11,
+          "A1": 24
+        },
+        "judge": {
+          "asked": 14,
+          "kept": 14,
+          "other barriers too": 3,
+          "the only barrier, kept": 11
+        }
+      }
+    },
+    "guard-auto-hybrid-mini-follow-warnings": {
+      "attacker": {
+        "requests": 370,
+        "warned": 370,
+        "by source": {
+          "A0": 365,
+          "A1": 260
+        },
+        "only source": {
+          "A0": 110,
+          "A1": 5
+        },
+        "judge": {
+          "asked": 370,
+          "cleared": 5,
+          "kept": 365,
+          "other barriers too": 255,
+          "the only barrier, kept": 110
+        }
+      },
+      "other": {
+        "requests": 410,
+        "warned": 128,
+        "by source": {
+          "A0": 24,
+          "A1": 115
+        },
+        "only source": {
+          "A0": 13,
+          "A1": 104
+        },
+        "judge": {
+          "asked": 24,
+          "kept": 24,
+          "other barriers too": 11,
+          "the only barrier, kept": 13
+        }
+      }
+    }
+  }
+}

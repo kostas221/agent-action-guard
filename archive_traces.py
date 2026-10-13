@@ -24,6 +24,7 @@ TRIALS = (
     "runs/trial-ratelimited",
     "runs/trial-v0.3-rep1-before-fix",
     "runs/trial-v0.3-hybrid-before-named-fix",
+    "runs/trial-v0.4-rep1-ratelimited",
     "runs/gpt-4o-mini-2024-07-18",  # phase 0's smoke runs behind results/phase0_smoke.json
 )
 FIXED_TIME = (2026, 1, 1, 0, 0, 0)

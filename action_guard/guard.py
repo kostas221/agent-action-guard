@@ -54,7 +54,10 @@ class Guard:
             return None
         review = self.policy.review(tool, args, query, env, messages)
         request = self.gate.request(tool, args, review.summary, review.warnings, getattr(review, "details", None))
-        self.gate.decide(request.id, self.approver.decide(request))
+        approved = self.approver.decide(request)
+        self.gate.decide(request.id, approved)
+        if hasattr(self.policy, "decided"):  # a policy that keeps count of the task's approved calls (0.5, W6)
+            self.policy.decided(tool, args, approved)
         released = self.gate.consume(tool, args)
         self.save_to_trace()
         if released is None:

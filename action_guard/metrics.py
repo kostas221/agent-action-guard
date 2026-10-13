@@ -231,10 +231,23 @@ def run_cells(suite) -> set[tuple[str, str | None]]:
     return {(u, None) for u in users} | {(u, i) for u in users for i in injections} | {(i, None) for i in injections}
 
 
+def failed_guard_call(row: dict) -> bool:
+    """Whether a model call of the guard itself gave no answer in this run: a plan that could not be made (every
+    action is then unexpected) or a judge call that failed (a vote to warn). The guard fails closed, so no attack
+    gains, but the run measures an outage (a rate limit, a timeout), not the policy: it is run again (0.5; the first
+    0.4 repeat 1 was found by hand, runs/trial-v0.4-rep1-ratelimited/)."""
+    for request in (row.get("guard") or {}).get("requests") or []:
+        details = request.get("details") or {}
+        if any((details.get(part) or {}).get("failed") for part in ("plan", "judge")):
+            return True
+    return False
+
+
 def cohort_problems(rows: list[dict], suites: Mapping, unreadable: Sequence[Path] = ()) -> list[str]:
     """Why these runs cannot make a final table: in a repeat, a suite's run that is missing, interrupted (saved before
-    it was scored), there twice or not one of the suite's runs, or a trace that cannot be read. A table with any of
-    them is provisional: report.py, compare.py and bootstrap.py show it but never save it over a final one."""
+    it was scored), there twice or not one of the suite's runs, a run where a call of the guard's own planner or
+    judge failed, or a trace that cannot be read. A table with any of them is provisional: report.py, compare.py and
+    bootstrap.py show it but never save it over a final one."""
     problems = [f"a trace cannot be read: {path.as_posix()}" for path in unreadable]
     groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for row in rows:
@@ -251,6 +264,10 @@ def cohort_problems(rows: list[dict], suites: Mapping, unreadable: Sequence[Path
             problems.append(f"{where}: runs saved twice {twice[:3]}")
         if foreign := sorted(str(cell) for cell in set(seen) - expected):
             problems.append(f"{where}: runs that are not the suite's {foreign[:3]}")
+        if failed := sum(failed_guard_call(row) for row in group):
+            problems.append(
+                f"{where}: {failed} runs where the guard's planner or judge gave no answer (run them again)"
+            )
     return problems
 
 

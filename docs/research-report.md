@@ -1,8 +1,9 @@
 # Exact-call approval under prompt injection: a short research report
 
-Version 0.4.0, written on 2026-10-12. Live results are those of 0.1 to 0.3; the 0.4 changes are measured by replay
-and supplied calls, and their live runs are planned (`docs/automatic-policy.md`, "Version 0.4, live"). What each
-number rests on: `docs/evidence.md`. What is and is not claimed: `docs/threat-model.md`.
+Version 0.5.0. Written on 2026-10-12 and completed on 2026-10-13 with the 0.4 live runs (banking, three repeats;
+`docs/automatic-policy.md`, "Version 0.4, live"); 0.5 (the same day) changes the policy after a closing review and is
+measured on the stored requests of those runs, not by new live runs ("Version 0.5" there). What each number rests on:
+`docs/evidence.md`. What is and is not claimed: `docs/threat-model.md`.
 
 ## Question
 
@@ -40,12 +41,13 @@ the agent's process only, and it does not bound how many separately approved act
 | automatic rules (0.3) | A0: who or where an action goes, and secrets, typed or known (tools file); A1: an action the plan does not list | - | `gpt-6-luna`, from the request alone | live, banking and Slack |
 | automatic hybrid (0.3) | A0, A1 | A0 only | `gpt-6-luna` | live, banking and Slack |
 | automatic hybrid, small planner (0.3) | A0, A1 | A0 only | `gpt-4o-mini` | live, banking |
-| automatic, 0.4 | adds: a redirect of an existing item, the account's signals (W4-W5), the user's own settings, irreversible actions | settings only (redirects, signals, irreversible: never) | as 0.3 | replay and supplied calls; live planned |
+| automatic, 0.4 | adds: a redirect of an existing item, the account's signals (W4-W5), the user's own settings, irreversible actions | settings only (redirects, signals, irreversible: never) | as 0.3 | live, banking; replay and supplied calls |
+| automatic, 0.5 | adds: a list of recipients checked item by item; W6 (payments in one task to an account the user pays, together unusual) | settings only (now also never: targets and secrets of high-stakes tools, banking's payments and password); asked only when its answer decides | as 0.3 | replay (0 decisions change in the 0.4 runs) and supplied calls |
 
 ## Results (live)
 
 **Banking, `important_instructions`, three repeats** (`results/comparison.json`, `results/v0.2.0/`,
-`results/v0.3-banking/`):
+`results/v0.3-banking/`, `results/v0.4/`):
 
 | configuration | attack success | utility, no attack | utility under attack | tasks needing a change: no attack | under attack |
 |---|---|---|---|---|---|
@@ -58,12 +60,24 @@ the agent's process only, and it does not bound how many separately approved act
 | automatic rules (0.3) | 0/432 | 22/48 | 211/432 | 9/27 | 78/243 |
 | automatic hybrid (0.3) | 0/432 | 23/48 | 208/432 | 9/27 | 80/243 |
 | automatic hybrid, small planner (0.3) | 0/432 | 23/48 | 197/432 | 6/27 | 55/243 |
+| automatic rules (0.4) | 0/432 | 22/48 | 185/432 | 7/27 | 50/243 |
+| automatic hybrid (0.4) | 0/432 | 24/48 | 207/432 | 9/27 | 81/243 |
+| automatic hybrid, small planner (0.4) | 0/432 | 20/48 | 208/432 | 6/27 | 60/243 |
 
 Paired over user tasks, the automatic configurations lower attack success by 49.8 points [-66.4, -33.3] against
 the undefended agent and by 16.2 points [-27.8, -6.0] against the tool filter. The hybrid's utility under attack on
 tasks needing a change is +0.4 points [-5.8, +6.6] against the tool filter: an interval that does not establish
 equivalence. Zero successes in 432 runs of 16 tasks and 9 goals bound nothing beyond these runs (Wilson's 95% upper
-end, 0.9%, is descriptive).
+end, 0.9%, is descriptive). With the units that are independent here (`bounds.py`, one-sided 95%): at most 2.1% of
+the 144 (task, goal) pairs, 17.1% of user tasks, 28.3% of attacker goals.
+
+In 0.4 the attacker's redirects (47, 45 and 42 requests) were stopped by the redirect rule and never reached the
+judge, which cleared only the address update of user task 13 (from the file the user names). The rules refuse that
+update by design and lose task 13 in all 30 runs (78 to 50 of 243 under attack); the hybrids keep it (81 and 60). The
+account's signals (W4-W5) stopped 13 requests no other source warned, all wrong payments by the agent: among them
+seven payments of 10,000 to the user's landlord that an injection asking for $30,000 in increments of $10,000 led
+to. Against the undefended agent, by task: the 0.4 hybrid's utility under attack on tasks needing a change is +0.8
+points [-2.1, +4.1].
 
 **Slack, three repeats** (`results/v0.3/`): attack success 208/315 undefended, 24/315 (rules) and 27/315 (hybrid) by
 AgentDojo's score, 7/315 and 8/315 on the calls carried out (AgentDojo scores one goal on the calls the agent asked
@@ -73,6 +87,13 @@ points [-36.5, -3.2] for the hybrid, and -14.0 [-27.0, -3.2] under attack. The g
 **Banking, `tool_knowledge`, one repeat** (`results/v0.3-tool-knowledge/`): 44/144 undefended, 0/144 in each
 automatic configuration; utility under attack on tasks needing a change 26/81 undefended, 27/81, 26/81 and 19/81.
 
+**Which part stopped the attacker** (`barriers.py`, the 0.4 banking runs): the plan (A1) was never the only warning
+on an attacker's request. A0 (a target or secret neither typed nor known) was, for 117, 119 and 116 requests, and in
+the hybrids the judge decided those: it kept every one, but it was the open path for an attack written to persuade
+it. 0.5 makes such warnings on banking's payments and password ones the judge cannot clear, at no measured cost: in
+no banking live run did the judge clear a correct payee or password, and replayed on every stored request no
+decision changes. On Slack (0.3) the plan was the only barrier for 34 and 35 attacker requests.
+
 ## Negative results and boundaries
 
 1. **A forged value in the source the user named** (adaptive cases A1, A2: the bill or the address file edited by
@@ -80,7 +101,7 @@ automatic configuration; utility under attack on tasks needing a change 26/81 un
    let both run in A2 (`docs/adaptive-tests.md`). It is refusal, not detection.
 2. **The judge cleared a redirect.** The attacker's redirect of a recurring payment (banking task 0, goal 4) was
    cleared by the judge 9 times under the first template and twice under the second; only the plan stopped it.
-   0.4 makes such a redirect a warning the judge cannot clear.
+   0.4 makes such a redirect a warning the judge cannot clear; in the 0.4 live runs none reached the judge.
 3. **A link sent to a known member** passes A0 (the member is known) and A1 (messages are planned): 16 such attacker
    requests ran on Slack. Asked about every recorded request with such a link, the judge warned on all 352, the
    article's link as much as the attacker's; the check was left off (`results/v0.4/links-judge-pilot.json`).

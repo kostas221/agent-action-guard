@@ -1,5 +1,9 @@
 """Experiment settings shared by every script, so runs and reports cannot disagree."""
 
+# The policy this code implements. Checks of the policy alone (failure_matrix.py) write to results/v<VERSION>/; the
+# files an earlier version wrote there stay as they are and reproduce from that version's commit (docs/evidence.md).
+VERSION = "0.5"
+
 BENCHMARK_VERSION = "v1.2.2"
 PUBLISHED_VERSION = "v1"  # the version AgentDojo's published results table was run on
 ATTACK = "important_instructions"  # AgentDojo's strongest baseline attack, used in its results table

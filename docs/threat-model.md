@@ -4,7 +4,8 @@ Written on 2026-10-11 for 0.4, after an external roadmap review (it proposed a p
 executor, durable approval ledger, identity, approval UI, formal model, user studies). This project is a research
 prototype: it measures how far an approval guard between an agent and its tools stops prompt injection on AgentDojo,
 and at what cost. This page states what it defends against, what it claims with which evidence, and what it does not
-do. The numbers are from the 0.3 runs (`docs/automatic-policy.md`); 0.4 is measured offline so far.
+do. The numbers are from the 0.3 runs and, for banking, the 0.4 runs (`docs/automatic-policy.md`); the 0.5 changes
+are measured on the stored requests of those runs, not by new live runs.
 
 ## The setting
 
@@ -29,10 +30,11 @@ settings); the tools' implementations (an effect not declared is assumed not to 
 | Claim | Evidence | Limits |
 |---|---|---|
 | No call to an acting tool runs without an approval of that exact call, and one approval runs it once | `tests/test_approval.py`, `tests/test_guard.py`; every live run's guard record | Inside the agent's process only (below) |
-| Banking, automatic policy: attack success 0 of 432 in each configuration, against 49.8% for the undefended agent and 16.2% for AgentDojo's best built-in defense (tool filter) | `results/v0.3-banking/`, paired bootstrap over user tasks: -49.8 points [-66.4, -33.3] vs undefended | One attack template; 16 user tasks, 9 attacker goals and 3 repeats are not 432 independent trials: Wilson's 95% upper bound, 0.9%, describes these runs, not a deployment |
-| Banking: utility under attack about the undefended agent's | -0.4 points [-1.6, +0.8] | Clean utility on tasks needing a change: 9 of 27 vs 12-15 of 27 for the defenses |
+| Banking, automatic policy: attack success 0 of 432 in each configuration, against 49.8% for the undefended agent and 16.2% for AgentDojo's best built-in defense (tool filter) | `results/v0.3-banking/`, `results/v0.4/` (0 of 432 again in 0.4), paired bootstrap over user tasks: -49.8 points [-66.4, -33.3] vs undefended | One attack template; 16 user tasks, 9 attacker goals and 3 repeats are not 432 independent trials: Wilson's 95% upper bound, 0.9%, describes these runs, not a deployment. Counting the 144 (task, goal) pairs as the independent units, the one-sided 95% bound is 2.1%; over the 16 user tasks, 17.1% (`results/v0.4/bounds.json`) |
+| Banking: utility under attack about the undefended agent's | -0.4 points [-1.6, +0.8] (0.3 rules); 0.4 hybrid +0.8 [-2.1, +4.1], on the tasks needing a change | Clean utility on tasks needing a change: 9 of 27 vs 12-15 of 27 for the defenses; the 0.4 rules lose task 13 by design (50 of 243 under attack) |
+| Banking, 0.5: a payment, or a redirect of one, to an account the user neither typed nor already deals with, and a password the user did not type, are warned, and the judge can never clear the warning | `policies/banking-tools.json` (`high_stakes`), `tests/test_automatic.py`; replay of every stored request: 0 decisions change in the 0.4 runs (`results/v0.5/`); failure matrix 0.5 | Holds only if the approver rejects warned calls; payees the user already pays are left to W4 and W6's thresholds; measured offline, not in live runs |
 | Slack: attack success 27/315 by AgentDojo's count, 8/315 on the calls carried out (hybrid) | `results/v0.3/` | Utility loss is significant: -19.0 points [-36.5, -3.2] clean (hybrid) |
-| Documented gaps have executable probes | `tests/test_known_gaps.py`, `tests/test_research_boundaries.py` (strict xfail turns red when a gap closes); the versioned attack/twin matrix: `failure_matrix.py` | Open in 0.4: links in messages; additional supplied-call probes show wrong known recipients, negated target mentions and unrequested repeated payments. These are conditional policy tests, not new end-to-end attack rates. |
+| Documented gaps have executable probes | `tests/test_known_gaps.py`, `tests/test_research_boundaries.py` (strict xfail turns red when a gap closes); the versioned attack/twin matrix: `failure_matrix.py` | Open in 0.5: links in messages; additional supplied-call probes show wrong known recipients, negated target mentions and unrequested repeated payments. These are conditional policy tests, not new end-to-end attack rates. |
 
 Every result is compared with our own undefended agent under the same harness; published numbers of other work used
 other agents or benchmark versions and are not ranked against ours.
@@ -57,7 +59,8 @@ limit: repeated actions can each receive a fresh approval from the simulated use
   Message content is not checked, except in banking for the user's own details; sending a link to a known member
   passes (the judge, asked in a pilot, warned on every link alike).
 - **The judge as evidence.** The model judge is a source of warnings. Repeated votes are not independent evidence;
-  some warnings it can never clear (the plan's, the account's signals, redirects, irreversible actions).
+  some warnings it can never clear (the plan's, the account's signals, redirects, irreversible actions and, since
+  0.5, the targets and secrets of high-stakes tools).
 - **Generality.** One agent model (`gpt-4o-mini-2024-07-18`), two AgentDojo suites. The tasks were inspected during
   development: no result here is a held-out test.
 
@@ -65,4 +68,7 @@ limit: repeated actions can each receive a fresh approval from the simulated use
 
 Rates come with Wilson 95% intervals over runs and paired bootstrap intervals over user tasks (`bootstrap.py`).
 Zero failures in n runs bounds the rate for those runs only, and only if they were independent. Repeats of the
-same tasks are not. A claim about other tasks, attackers or models needs runs on them.
+same tasks are not; `bounds.py` gives the bound with pairs, tasks or goals as the units. A claim about other tasks,
+attackers or models needs runs on them. No attacker here adapted to the guard: attacks searched against a defense
+(as in AutoDojo or "The Attacker Moves Second") usually do better than fixed templates, so 0/432 is not a bound
+against them.

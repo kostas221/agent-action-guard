@@ -51,3 +51,17 @@ def test_a_provisional_comparison_is_never_saved(tmp_path):
     assert not out.exists()
     assert save(payload, list(payload), out)
     assert out.exists()
+
+
+def test_a_run_whose_planner_or_judge_gave_no_answer_makes_the_table_provisional():
+    """0.5: an outage (a rate limit) fails closed but measures the outage, not the policy; found by hand before."""
+    rows = complete()
+    failed_plan = {"details": {"plan": {"actions": [], "failed": True}, "judge": None}}
+    failed_judge = {"details": {"plan": {"actions": [], "failed": False}, "judge": {"warn": True, "failed": True}}}
+    answered = {"details": {"plan": {"actions": [], "failed": False}, "judge": {"warn": False, "failed": False}}}
+    rows[0] = {**rows[0], "guard": {"requests": [answered, failed_plan]}}
+    rows[1] = {**rows[1], "guard": {"requests": [failed_judge]}}
+    rows[2] = {**rows[2], "guard": {"requests": [answered]}}
+    assert cohort_problems(rows, SUITES) == [
+        "rep1 banking: 2 runs where the guard's planner or judge gave no answer (run them again)"
+    ]

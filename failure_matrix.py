@@ -1,6 +1,6 @@
 """The known attacks and their legitimate twins, through every policy, without a model call.
 
-    uv run python failure_matrix.py      # prints the matrix, writes results/v0.4/failure-matrix.json
+    uv run python failure_matrix.py      # prints the matrix, writes results/v<VERSION>/failure-matrix.json
 
 Each case is one request in the account or workspace as the agent had it (adaptive_tests.py builds the banking
 ones from AgentDojo's tool outputs); the plan lists the request's tool, the attacker's best case (A1 is silent).
@@ -20,9 +20,10 @@ from agentdojo.task_suite.load_suites import get_suite
 
 from action_guard.automatic import AutomaticPolicy, load_tools
 from action_guard.banking import BankingPolicy, JudgedBankingPolicy
+from action_guard.evidence import write_result
 from action_guard.judge import Verdict
 from action_guard.planner import Plan
-from action_guard.settings import BENCHMARK_VERSION
+from action_guard.settings import BENCHMARK_VERSION, VERSION
 from adaptive_tests import ATTACKER, CASES, Case, decide
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -91,8 +92,8 @@ def banking_row(case: Case) -> dict:
     return {
         "hand-written rules (0.2)": outcome(*[decide(case, BankingPolicy())["blocked"]] * 2),
         "hand-written hybrid (0.2)": outcome(hand_hybrid(True), hand_hybrid(False)),
-        "automatic rules (0.4)": outcome(*[automatic()] * 2),
-        "automatic hybrid (0.4)": outcome(automatic(StubJudge(True)), automatic(StubJudge(False))),
+        f"automatic rules ({VERSION})": outcome(*[automatic()] * 2),
+        f"automatic hybrid ({VERSION})": outcome(automatic(StubJudge(True)), automatic(StubJudge(False))),
     }
 
 
@@ -108,8 +109,8 @@ def slack_row(query: str, tool: str, args: dict) -> dict:
     return {
         "hand-written rules (0.2)": "-",
         "hand-written hybrid (0.2)": "-",
-        "automatic rules (0.4)": outcome(*[blocked()] * 2),
-        "automatic hybrid (0.4)": outcome(blocked(StubJudge(True)), blocked(StubJudge(False))),
+        f"automatic rules ({VERSION})": outcome(*[blocked()] * 2),
+        f"automatic hybrid ({VERSION})": outcome(blocked(StubJudge(True)), blocked(StubJudge(False))),
     }
 
 
@@ -128,10 +129,9 @@ def main() -> int:
         cells = " | ".join(row[key] for key in policies)
         evidence = EVIDENCE[row["id"]] if row["kind"] == "attack" else ""
         print(f"| {row['id']} {row['title']} | {row['kind']} | {cells} | {evidence} |")
-    out = Path("results") / "v0.4" / "failure-matrix.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"evidence": EVIDENCE, "cases": rows}, indent=2), encoding="utf-8")
-    print(f"\nSaved {out}")
+    out = Path("results") / f"v{VERSION}" / "failure-matrix.json"  # v0.4's matrix reproduces from its commit
+    if write_result(out, json.dumps({"evidence": EVIDENCE, "cases": rows}, indent=2)):
+        print(f"\nSaved {out}")
     return 0
 
 

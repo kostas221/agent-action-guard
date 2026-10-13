@@ -7,7 +7,26 @@ Within the guarded runtime, tools classified as acting require approval of the e
 Experiments on [AgentDojo](https://github.com/ethz-spylab/agentdojo) measure attack success, useful task
 completion and the limitations of provenance warnings and model judges.
 
-## Current research status (12 October 2026)
+## At a glance
+
+- **What it is:** a guard between an LLM agent and its tools. Every action that changes something waits for an
+  approval of that exact call, used once; warnings tell the approver which values (who gets the money, where data
+  goes) did not come from the user. Warnings come from rules, from a plan made from the user's request alone, from
+  the account's history, and from a model judge allowed to clear some of them.
+- **What it achieved** (AgentDojo banking, `gpt-4o-mini`, a fixed attack template, three repeats): attack success
+  from 49.8% without a guard, and 16.2% with AgentDojo's best built-in defense, to **0 of 432** in every
+  configuration whose approver follows the warnings. On the tasks that need an action, the hybrid completes as many
+  under attack as the undefended agent (+0.8 points [-2.1, +4.1]), fewer without an attack (9 of 27 against 12).
+  On Slack it is weaker: 27/315 by AgentDojo's score (8/315 on the calls carried out), at a real utility cost.
+- **How:** a prediction written before every paid run and checked after (the wrong ones are reported as wrong);
+  every change replayed on the stored requests of earlier runs before any new run; an evidence index tying each
+  published table to its traces, the code that ran and the code that scored it; one script that recomputes every
+  table from the published traces at no cost.
+- **What it does not show:** no attacker adapted to the guard, two suites, one agent model, simulated approvers,
+  enforcement inside the agent's process. Zero in 432 runs is at most 2.1% over the 144 task-goal pairs, not a
+  deployment bound ([threat model](docs/threat-model.md)).
+
+## Current research status (13 October 2026)
 
 The current study covers **banking and Slack**, automatic rules and hybrid policies, three built-in
 AgentDojo defenses, and a second banking attack template. The agent remains
@@ -19,12 +38,28 @@ AgentDojo defenses, and a second banking attack template. The agent remains
   [95% interval -5.8, +6.6], which does not establish equivalence.
 - **Slack v0.3:** hybrid attack success is 27/315 by AgentDojo's evaluator and 8/315 on executed
   effects. Clean completion falls from 49/63 to 37/63, a difference of -19.0 points [-36.5, -3.2].
-- **v0.4 work:** policy corrections, replay, an attack/twin matrix, and two rejected judge/planner
-  pilots. The inspected results directory has no completed v0.4 end-to-end evaluation. Historical
-  live measurements and current replay are separate kinds of evidence.
+- **Banking v0.4 (live, three repeats):** 0/432 attacks succeed in each automatic configuration.
+  The attacker's redirect of a scheduled payment is now stopped by a rule the judge cannot clear
+  (in v0.3 the judge cleared it 9 times and only the plan stopped it). The rules refuse a setting
+  taken from a file and lose user task 13 in every run (50/243 on tasks requiring a change under
+  attack, from 78/243); the hybrid keeps it (81/243; +0.8 points [-2.1, +4.1] against no guard).
+  History signals stopped 13 wrong payments by the agent that no other warning caught, seven of
+  them 10,000 each, prompted by an injection. Slack is not rerun: replayed on every stored Slack
+  request, no v0.4 change alters a decision.
+- **v0.4 offline work:** replay of the stored requests, an attack/twin matrix, and two rejected
+  judge/planner pilots. Live measurements, replay and pilots are separate kinds of evidence
+  ([evidence index](docs/evidence.md)).
+- **v0.5 (closing review; offline, no new live runs):** the judge can no longer clear a warning on a
+  payment's target or the password (in no live run did it clear a correct one); it is asked only when
+  its answer decides (in the 0.4 banking hybrid, 33 questions instead of 389); several payments in one task
+  that together pass the usual amount are warned (W6); a bug that warned on every list of recipients is
+  fixed. Replayed on every stored request: no decision of the 0.4 runs changes. `bounds.py` gives bounds
+  that do not count repeats as independent, and `barriers.py` which warning stopped each request: in the
+  0.4 hybrids the judge alone stood between the attacker and 119 and 116 requests, now beyond it.
 
 Zero observed successes does not imply zero risk: 432 runs repeat a small set of tasks and attacker
-goals. The descriptive Wilson upper endpoint for 0/432 is about 0.9%; it is not a deployment bound.
+goals. The descriptive Wilson upper endpoint for 0/432 is about 0.9%; counting the 144 (task, goal)
+pairs as the independent units, the one-sided 95% bound is 2.1%. Neither is a deployment bound.
 Full intervals, repeat variation and limitations are in the
 [experiment log](docs/automatic-policy.md), [threat model](docs/threat-model.md), and
 [research assessment and proposed next experiment](docs/research-direction-2026-10-12.md).
@@ -309,7 +344,8 @@ suite and repeat.
 
 ### Reproduce the tables
 
-From 0.4.0, one archive holds every run behind every published table: the runs folders of 0.1 to 0.4, phase 0's
+From 0.4.0, one archive holds every run behind every published table: the runs folders of 0.1 to 0.4 (0.5 added no
+runs, so its archive holds the same files), phase 0's
 smoke runs and the set-aside trials the docs mention (`archive_traces.py` builds it with a fixed order and
 timestamps; its SHA-256 is in the release notes). Extract it into the repository root, then:
 
@@ -319,8 +355,8 @@ bash scripts/reproduce.sh
 
 It checks the traces against the evidence index (`evidence.py`: every planned repeat present and complete, the
 recorded digests, execution and scoring code), recomputes every result file from the traces, with no model call and
-no cost, and ends with `git status --short results/`, which comes out empty. Pilots and the judge's part of the
-harder tests call a model, so their saved results are not recomputed.
+no cost, and ends with `git status --short results/`, which comes out empty, and the index check again. Pilots and
+the judge's part of the harder tests call a model, so their saved results are not recomputed.
 
 The earlier release's own archive and commands, for its 0.1 and 0.2 tables only:
 
@@ -357,9 +393,10 @@ results are not recomputed here.
 | `action_guard/pipelines.py` | configurations |
 | `action_guard/metrics.py`, `guard_metrics.py`, `attacks.py` | rates with confidence intervals, guard and attack breakdowns |
 | `run_benchmark.py`, `report.py`, `compare.py`, `demo.py` | run, report, compare, try |
-| `action_guard/automatic.py`, `planner.py`, `policies/` | the automatic policy (0.3, 0.4): tools files, plans, the general judge |
+| `action_guard/automatic.py`, `planner.py`, `policies/` | the automatic policy (0.3 to 0.5): tools files, plans, the general judge |
 | `bootstrap.py` | paired differences over user tasks |
-| `fixes_replay.py`, `failure_matrix.py`, `*_pilot.py` | 0.4's replay, the attack and twin matrix, the pilots |
+| `fixes_replay.py`, `policy_replay.py`, `failure_matrix.py`, `*_pilot.py` | 0.4's replay, today's policy on every stored request, the attack and twin matrix, the pilots |
+| `bounds.py`, `barriers.py` | upper bounds over pairs, tasks and goals; which warning stopped each request |
 | `action_guard/evidence.py`, `evidence.py`, `archive_traces.py`, `scripts/reproduce.sh` | the evidence index and its check, the trace archive, the offline reproduction |
 | `docs/` | policy, results, demo runs, the judge's design, the automatic policy's log, threat model, evidence index, research report |
 | `results/` | the numbers behind every table, recomputable from the published run traces ([reproduce](#reproduce-the-tables)) |
@@ -394,8 +431,9 @@ results are not recomputed here.
 
 ## Next
 
-Finish a coherent research release with current evidence and reproducible tables. A focused follow-up
-can test task authorization on held-out cases with adaptive attacks and a close external comparator.
+The project closes as research at 0.5. A focused follow-up would test task authorization with an
+attacker that adapts to the guard, on held-out suites (workspace and travel, possible now that lists of
+recipients are checked), with a close external comparator and real approvers.
 The [research assessment](docs/research-direction-2026-10-12.md) separates release work from optional
 experiments; the [experiment log](docs/automatic-policy.md) records the implemented Slack policy,
 second attack template, results and rejected hypotheses.

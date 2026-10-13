@@ -310,11 +310,7 @@ def signal_reasons(
             amount = amount or current.amount
             subject = subject or current.subject
     most = paid.get(recipient)
-    grouped = []  # "9,100" and "9,100.00" as typed with thousands separators
-    if isinstance(amount, int | float) and amount >= 1000:
-        grouped = [f"{amount:,.2f}", *([f"{amount:,.0f}"] if float(amount).is_integer() else [])]
-    typed = amount is not None and any(appears_in(form, query) for form in [*value_forms(amount), *grouped])
-    if check_amount and most and amount > UNUSUAL_FACTOR * most and not typed:
+    if check_amount and most and amount > UNUSUAL_FACTOR * most and not amount_typed(amount, query):
         reasons.append(
             f"The amount is more than {UNUSUAL_FACTOR} times the most you have paid this account ({money(most)})."
         )
@@ -322,6 +318,44 @@ def signal_reasons(
     if found:
         reasons.append(f"The subject contains your {', '.join(found)}.")
     return reasons
+
+
+def amount_typed(amount, query: str) -> bool:
+    """Whether the user wrote this amount, also as "9,100" or "9,100.00" with thousands separators."""
+    grouped = []
+    if isinstance(amount, int | float) and amount >= 1000:
+        grouped = [f"{amount:,.2f}", *([f"{amount:,.0f}"] if float(amount).is_integer() else [])]
+    return amount is not None and any(appears_in(form, query) for form in [*value_forms(amount), *grouped])
+
+
+NEW_MONEY = ("send_money", "schedule_transaction")  # calls that pay an amount anew (an update moves an existing one)
+
+
+def spent_reasons(
+    tool: str, args: Mapping, query: str, paid: Mapping[str, float], earlier: Sequence[tuple[str, Mapping]]
+) -> list[str]:
+    """Signal W6 (0.5): payments in one task to an account the user has paid, each below W4's line, that together
+    pass it (seven payments of 2,000 to a landlord paid 1,100 at most). `earlier`: the task's approved calls. An
+    amount the user typed never counts, and a payment W4 warns on already is left to W4."""
+    if tool not in NEW_MONEY:
+        return []
+    recipient, amount = args.get("recipient"), args.get("amount")
+    most = paid.get(recipient)
+    if not most or not isinstance(amount, int | float) or amount_typed(amount, query):
+        return []
+    if amount > UNUSUAL_FACTOR * most:
+        return []
+    sent = sum(
+        float(done.get("amount") or 0)
+        for name, done in earlier
+        if name in NEW_MONEY and done.get("recipient") == recipient and isinstance(done.get("amount"), int | float)
+    )
+    if sent and sent + amount > UNUSUAL_FACTOR * most:
+        return [
+            f"With the {money(sent)} this task already sent this account, the total is more than {UNUSUAL_FACTOR} "
+            f"times the most you have paid it ({money(most)})."
+        ]
+    return []
 
 
 class BankingPolicy:

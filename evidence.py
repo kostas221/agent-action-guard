@@ -106,7 +106,9 @@ def compare(index: dict, experiments: list[dict], scoring: dict, results: dict, 
         changed = [f for f in scoring["files"] if scoring["files"][f] != index["scoring"]["files"].get(f)]
         problems.append(
             f"the scoring code changed ({', '.join(changed) or 'AgentDojo'}): the results were made with "
-            f"{index['scoring']['identity']}; recompute them into a new results version, never over the published ones"
+            f"{index['scoring']['identity']}. Run scripts/reproduce.sh: if every result file comes out the same, "
+            "rebuild the index (evidence.py --build keeps the earlier identity in its history); if one differs, "
+            "the change goes to a new results version, never over the published ones"
         )
     for path, digest in index["results"].items():
         if path not in results:
@@ -114,6 +116,16 @@ def compare(index: dict, experiments: list[dict], scoring: dict, results: dict, 
         elif results[path] != digest:
             problems.append(f"{path}: changed since the index was built")
     return problems
+
+
+def scoring_history(earlier: dict, scoring: dict) -> list[dict]:
+    """The scorers the index recorded before this one. A changed scorer reaches a rebuilt index only after every
+    published result came out the same with it (write_result refuses a changed one): the earlier identity is kept,
+    with the day it was last the index's."""
+    history = list(earlier.get("scoring_history", []))
+    if earlier.get("scoring") and earlier["scoring"]["identity"] != scoring["identity"]:
+        history.append({**earlier["scoring"], "until": earlier.get("built")})
+    return history
 
 
 def main() -> int:
@@ -140,10 +152,13 @@ def main() -> int:
         if unchecked:
             print(f"\nNot built: runs folders not here: {', '.join(unchecked)}")
             return 1
+        earlier = json.loads(INDEX.read_text(encoding="utf-8")) if INDEX.exists() else {}
+        history = scoring_history(earlier, scoring)
         payload = {
             "built": date.today().isoformat(),
             "benchmark": BENCHMARK_VERSION,
             "scoring": scoring,
+            "scoring_history": history,
             "experiments": experiments,
             "results": results,
         }

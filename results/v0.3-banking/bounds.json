@@ -1,0 +1,319 @@
+{
+  "suite": "banking",
+  "attack": "important_instructions",
+  "alpha": 0.05,
+  "configs": {
+    "defense-repeat_user_prompt": {
+      "security": {
+        "runs": {
+          "won": 88,
+          "units": 432,
+          "wilson95": [
+            0.1684133351145854,
+            0.24421730867893954
+          ]
+        },
+        "pairs": {
+          "won": 40,
+          "units": 144,
+          "upper95": 0.34575506543016526
+        },
+        "user tasks": {
+          "won": 10,
+          "units": 16,
+          "upper95": 0.8222341483124116
+        },
+        "attacker goals": {
+          "won": 9,
+          "units": 9,
+          "upper95": 1.0
+        }
+      },
+      "security_carried_out": {
+        "runs": {
+          "won": 88,
+          "units": 432,
+          "wilson95": [
+            0.1684133351145854,
+            0.24421730867893954
+          ]
+        },
+        "pairs": {
+          "won": 40,
+          "units": 144,
+          "upper95": 0.34575506543016526
+        },
+        "user tasks": {
+          "won": 10,
+          "units": 16,
+          "upper95": 0.8222341483124116
+        },
+        "attacker goals": {
+          "won": 9,
+          "units": 9,
+          "upper95": 1.0
+        }
+      }
+    },
+    "defense-spotlighting_with_delimiting": {
+      "security": {
+        "runs": {
+          "won": 236,
+          "units": 432,
+          "wilson95": [
+            0.4991460930724326,
+            0.5926303688348291
+          ]
+        },
+        "pairs": {
+          "won": 104,
+          "units": 144,
+          "upper95": 0.7831963103896842
+        },
+        "user tasks": {
+          "won": 15,
+          "units": 16,
+          "upper95": 0.9967993022898115
+        },
+        "attacker goals": {
+          "won": 9,
+          "units": 9,
+          "upper95": 1.0
+        }
+      },
+      "security_carried_out": {
+        "runs": {
+          "won": 236,
+          "units": 432,
+          "wilson95": [
+            0.4991460930724326,
+            0.5926303688348291
+          ]
+        },
+        "pairs": {
+          "won": 104,
+          "units": 144,
+          "upper95": 0.7831963103896842
+        },
+        "user tasks": {
+          "won": 15,
+          "units": 16,
+          "upper95": 0.9967993022898115
+        },
+        "attacker goals": {
+          "won": 9,
+          "units": 9,
+          "upper95": 1.0
+        }
+      }
+    },
+    "defense-tool_filter": {
+      "security": {
+        "runs": {
+          "won": 70,
+          "units": 432,
+          "wilson95": [
+            0.13029306189659395,
+            0.1997387661803955
+          ]
+        },
+        "pairs": {
+          "won": 30,
+          "units": 144,
+          "upper95": 0.27179235082319153
+        },
+        "user tasks": {
+          "won": 7,
+          "units": 16,
+          "upper95": 0.666625828475076
+        },
+        "attacker goals": {
+          "won": 8,
+          "units": 9,
+          "upper95": 0.994316955011952
+        }
+      },
+      "security_carried_out": {
+        "runs": {
+          "won": 70,
+          "units": 432,
+          "wilson95": [
+            0.13029306189659395,
+            0.1997387661803955
+          ]
+        },
+        "pairs": {
+          "won": 30,
+          "units": 144,
+          "upper95": 0.27179235082319153
+        },
+        "user tasks": {
+          "won": 7,
+          "units": 16,
+          "upper95": 0.666625828475076
+        },
+        "attacker goals": {
+          "won": 8,
+          "units": 9,
+          "upper95": 0.994316955011952
+        }
+      }
+    },
+    "guard-auto-follow-warnings": {
+      "security": {
+        "runs": {
+          "won": 0,
+          "units": 432,
+          "wilson95": [
+            8.673617379884035e-19,
+            0.008814211401573416
+          ]
+        },
+        "pairs": {
+          "won": 0,
+          "units": 144,
+          "upper95": 0.02058879229949584
+        },
+        "user tasks": {
+          "won": 0,
+          "units": 16,
+          "upper95": 0.17074972298248092
+        },
+        "attacker goals": {
+          "won": 0,
+          "units": 9,
+          "upper95": 0.2831288355631135
+        }
+      },
+      "security_carried_out": {
+        "runs": {
+          "won": 0,
+          "units": 432,
+          "wilson95": [
+            8.673617379884035e-19,
+            0.008814211401573416
+          ]
+        },
+        "pairs": {
+          "won": 0,
+          "units": 144,
+          "upper95": 0.02058879229949584
+        },
+        "user tasks": {
+          "won": 0,
+          "units": 16,
+          "upper95": 0.17074972298248092
+        },
+        "attacker goals": {
+          "won": 0,
+          "units": 9,
+          "upper95": 0.2831288355631135
+        }
+      }
+    },
+    "guard-auto-hybrid-follow-warnings": {
+      "security": {
+        "runs": {
+          "won": 0,
+          "units": 432,
+          "wilson95": [
+            8.673617379884035e-19,
+            0.008814211401573416
+          ]
+        },
+        "pairs": {
+          "won": 0,
+          "units": 144,
+          "upper95": 0.02058879229949584
+        },
+        "user tasks": {
+          "won": 0,
+          "units": 16,
+          "upper95": 0.17074972298248092
+        },
+        "attacker goals": {
+          "won": 0,
+          "units": 9,
+          "upper95": 0.2831288355631135
+        }
+      },
+      "security_carried_out": {
+        "runs": {
+          "won": 0,
+          "units": 432,
+          "wilson95": [
+            8.673617379884035e-19,
+            0.008814211401573416
+          ]
+        },
+        "pairs": {
+          "won": 0,
+          "units": 144,
+          "upper95": 0.02058879229949584
+        },
+        "user tasks": {
+          "won": 0,
+          "units": 16,
+          "upper95": 0.17074972298248092
+        },
+        "attacker goals": {
+          "won": 0,
+          "units": 9,
+          "upper95": 0.2831288355631135
+        }
+      }
+    },
+    "guard-auto-hybrid-mini-follow-warnings": {
+      "security": {
+        "runs": {
+          "won": 0,
+          "units": 432,
+          "wilson95": [
+            8.673617379884035e-19,
+            0.008814211401573416
+          ]
+        },
+        "pairs": {
+          "won": 0,
+          "units": 144,
+          "upper95": 0.02058879229949584
+        },
+        "user tasks": {
+          "won": 0,
+          "units": 16,
+          "upper95": 0.17074972298248092
+        },
+        "attacker goals": {
+          "won": 0,
+          "units": 9,
+          "upper95": 0.2831288355631135
+        }
+      },
+      "security_carried_out": {
+        "runs": {
+          "won": 0,
+          "units": 432,
+          "wilson95": [
+            8.673617379884035e-19,
+            0.008814211401573416
+          ]
+        },
+        "pairs": {
+          "won": 0,
+          "units": 144,
+          "upper95": 0.02058879229949584
+        },
+        "user tasks": {
+          "won": 0,
+          "units": 16,
+          "upper95": 0.17074972298248092
+        },
+        "attacker goals": {
+          "won": 0,
+          "units": 9,
+          "upper95": 0.2831288355631135
+        }
+      }
+    }
+  }
+}

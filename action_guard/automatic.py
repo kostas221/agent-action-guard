@@ -22,6 +22,17 @@ In the hybrid a model judge may clear an A0 warning, as it may clear W1-W3 in ba
   correct requests that had run), so the live configurations leave it off; the code stays so that the pilot can
   be reproduced (docs/automatic-policy.md, "Fix 4: the pilot's results").
 
+0.5 (docs/automatic-policy.md, "Version 0.5"):
+- A target holding a list (several recipients or participants) passes only when each of them is typed or known;
+  written whole, a list was in no message, so every such call was warned.
+- The judge is asked only when its answer can decide: not when a warning it cannot clear is there already.
+- A tool the tools file marks high stakes (moving money, granting access): who or where it goes, and a secret, must
+  be typed or known, whatever the judge says. In every banking live run the judge cleared no correct payee and no
+  password, only the user's own settings, so this costs nothing measured and leaves the judge nothing to be talked
+  into on a payment: an injection must make the attacker typed or known, which it cannot.
+- Banking W6, from the task's own approved calls: payments to an account the user has paid that each stay below
+  W4's line but together pass it. Never cleared, like W4-W5.
+
 The suite-specific code is who the user already deals with (CONTACTS), what the account itself says about the
 user (SIGNALS, SETTINGS) and, for evaluation only, how to recognize the attacker's requests (labels.py).
 """
@@ -43,9 +54,10 @@ from action_guard.banking import (
     payees,
     signal_reasons,
     source_call,
+    spent_reasons,
     value_forms,
 )
-from action_guard.planner import EFFECTS, ROLES, Plan, floor_reasons, typed
+from action_guard.planner import EFFECTS, ROLES, Plan, floor_reasons, items, typed
 
 UNEXPECTED = "This action is not part of what you asked."
 UNLISTED = "This tool is not in the checked list of tools: nothing is known about what it does."
@@ -85,6 +97,8 @@ CONTACTS: dict[str, Callable] = {"banking": banking_contacts, "slack": slack_con
 # What the account says about the user beyond their contacts, per suite: (what to fix at the task's start,
 # the reasons for one call). Banking: the most paid to each account (W4) and the user's own details (W5).
 SIGNALS: dict[str, tuple[Callable, Callable]] = {"banking": (paid_amounts, signal_reasons)}
+# Per suite, what the task's own approved calls add to them (0.5): banking W6, payments that together pass W4's line.
+CUMULATIVE: dict[str, Callable] = {"banking": spent_reasons}
 
 
 def banking_settings(env) -> dict[str, str]:
@@ -138,7 +152,8 @@ def origin(value, query: str, messages, known: Mapping[str, str] | None = None, 
     return "neither in the user's request nor in any tool output (made up or computed)"
 
 
-TOOL_KEYS = ("effect", "roles", "irreversible")
+TOOL_KEYS = ("effect", "roles", "irreversible", "high_stakes")
+FLAGS = ("irreversible", "high_stakes")  # true or absent, and only on a tool that acts
 
 
 def unique_keys(pairs: list[tuple[str, object]]) -> dict:
@@ -176,8 +191,9 @@ def tools_problems(tools: Mapping) -> list[str]:
                 for name, role in roles.items()
                 if role not in ROLES
             ]
-        if "irreversible" in entry and (entry["irreversible"] is not True or entry.get("effect") != "acts"):
-            problems.append(f"{tool}: irreversible must be true, and only on a tool that acts")
+        for flag in FLAGS:
+            if flag in entry and (entry[flag] is not True or entry.get("effect") != "acts"):
+                problems.append(f"{tool}: {flag} must be true, and only on a tool that acts")
     return problems
 
 
@@ -217,22 +233,23 @@ def argument_facts(
     messages,
     addresses: Mapping[str, Sequence[str]] | None = None,
 ) -> list:
-    """Where each argument's value came from, computed by code (for the judge, which never reads tool outputs);
-    then where each address inside a content argument came from (`addresses`, fix 4)."""
+    """Where each argument's value came from, computed by code (for the judge, which never reads tool outputs), one
+    fact per recipient of a list; then where each address inside a content argument came from (`addresses`, fix 4)."""
     facts = []
     for name, value in args.items():
         if value is None:
             continue
-        if isinstance(value, str) and not value.strip():
-            if roles.get(name) in ("target", "secret"):  # A0 warns on it: the judge must see that it is empty
-                facts.append(f"{name} = {json.dumps(value)}: empty (the call sets an empty value)")
-            continue
-        if not value_forms(value):
-            continue
-        written = json.dumps(value if len(str(value)) <= FACT_WIDTH else f"{str(value)[:FACT_WIDTH]}...")
         role = roles.get(name)
-        where = origin(value, query, messages, known if role == "target" else None, secret=role == "secret")
-        facts.append(f"{name} = {written}: {where}")
+        for each in items(value) if role in KEY_ROLES else [value]:
+            if isinstance(each, str) and not each.strip():
+                if role in ("target", "secret"):  # A0 warns on it: the judge must see that it is empty
+                    facts.append(f"{name} = {json.dumps(each)}: empty (the call sets an empty value)")
+                continue
+            if not value_forms(each):
+                continue
+            written = json.dumps(each if len(str(each)) <= FACT_WIDTH else f"{str(each)[:FACT_WIDTH]}...")
+            where = origin(each, query, messages, known if role == "target" else None, secret=role == "secret")
+            facts.append(f"{name} = {written}: {where}")
     for name, found in (addresses or {}).items():
         for address in found[:ADDRESSES_SHOWN]:
             facts.append(f"{ADDRESS_FACT.format(name)} = {json.dumps(address)}: {origin(address, query, messages)}")
@@ -265,6 +282,7 @@ class AutomaticPolicy:
         self.contacts = CONTACTS[suite_name]
         self.signals = SIGNALS.get(suite_name)
         self.settings = SETTINGS.get(suite_name)
+        self.cumulative = CUMULATIVE.get(suite_name)
         self.name = f"auto-{suite_name}-{mode}"
         self.known: dict[str, str] | None = None
         self.history = None
@@ -277,6 +295,12 @@ class AutomaticPolicy:
         self.history = self.signals[0](env) if self.signals else None  # the same for the account's history
         self.current = self.settings(env) if self.settings else None  # and for the user's own settings
         self.plan, self.plan_query = None, None
+        self.approved: list[tuple[str, dict]] = []  # this task's approved calls, in order
+
+    def decided(self, tool: str, args: Mapping, approved: bool) -> None:
+        """The approver's decision on a request this policy reviewed (Guard.check): approved calls count toward W6."""
+        if approved:
+            self.approved.append((tool, dict(args)))
 
     def needs_approval(self, tool: str) -> bool:
         entry = self.tools.get(tool)
@@ -312,18 +336,29 @@ class AutomaticPolicy:
         redirect = []  # who or where an existing item goes, moved to someone new: never cleared (fix 1)
         if updates:
             redirect = floor_reasons(tool, checked, query, targets, lambda value: value in known)
+        stakes = []  # who gets money or access, and a secret, on a tool marked high stakes: never cleared (0.5)
+        if entry.get("high_stakes"):
+            guarded = {name: role for name, role in roles.items() if role in ("target", "secret")}
+            found = floor_reasons(tool, checked, query, guarded, lambda value: value in known)
+            stakes = [reason for reason in found if reason not in redirect]
         irreversible = []  # what cannot be undone needs every target typed, known or not: never cleared (fix 5)
         if entry.get("irreversible"):
             given_targets = [name for name in targets if args.get(name) is not None]
-            irreversible = [IRREVERSIBLE.format(name) for name in given_targets if not named(args[name], query)]
+            irreversible = [
+                IRREVERSIBLE.format(name)
+                for name in given_targets
+                if not all(named(each, query) for each in items(args[name]))
+            ]
         # An address in a message the user did not type: the judge's to read, in the hybrid, when switched on (fix 4)
         addresses = content_addresses(args, roles, query) if self.mode == "hybrid" and self.links else {}
         linked = [LINKED.format(name, shown(found)) for name, found in addresses.items()]
-        clearable = [reason for reason in a0 if reason not in redirect] + linked
+        clearable = [reason for reason in a0 if reason not in redirect and reason not in stakes] + linked
         signals = []  # what the account says (W4, W5 in banking): never cleared (fix 2)
         if self.signals:
             history = self.history if self.history is not None else self.signals[0](env)
             signals = self.signals[1](tool, args, query, env, history)
+            if self.cumulative:
+                signals += self.cumulative(tool, args, query, history, self.approved)
         plan = self.plan_for(query)
         a1 = [] if plan is None or any(action["tool"] == tool for action in plan.actions) else [UNEXPECTED]
         facts = argument_facts(checked, roles, query, known, messages, addresses)  # an empty field of an update: none
@@ -336,6 +371,7 @@ class AutomaticPolicy:
             "warning_source": self.name,
             "rule_warnings": a0,
             "redirect_warnings": redirect,
+            "stakes_warnings": stakes,
             "irreversible_warnings": irreversible,
             "signal_warnings": signals,
             "link_warnings": linked,
@@ -343,9 +379,12 @@ class AutomaticPolicy:
             "plan": plan.to_dict() if plan is not None else None,
             "judge": None,
         }
-        if self.mode == "hybrid" and clearable:
+        # The judge is asked only when its answer decides: a request that carries a warning it cannot clear stays
+        # warned whatever it says (0.5; in the 0.4 hybrid 442 of its 778 calls were of that kind)
+        unclearable = [*redirect, *stakes, *irreversible, *signals, *a1]
+        if self.mode == "hybrid" and clearable and not unclearable:
             verdict = self.judge.assess(query, tool, args, summary, facts, key_fields)
             details["judge"] = verdict.to_dict()
             clearable = [*clearable, f"Safety check: {verdict.reason}"] if verdict.warn else []
-        warnings = [*redirect, *irreversible, *clearable, *signals, *a1]
+        warnings = [*redirect, *irreversible, *stakes, *clearable, *signals, *a1]
         return Review(summary=summary, warnings=warnings, details=details)

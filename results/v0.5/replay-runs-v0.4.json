@@ -1,0 +1,47 @@
+{
+  "key_roles": [
+    "target",
+    "secret",
+    "setting"
+  ],
+  "summary": {
+    "banking guard-auto-follow-warnings": {
+      "attacker": {
+        "judge asked now": 0,
+        "judge asked then": 0,
+        "requests": 371
+      },
+      "other": {
+        "judge asked now": 0,
+        "judge asked then": 0,
+        "requests": 414
+      }
+    },
+    "banking guard-auto-hybrid-follow-warnings": {
+      "attacker": {
+        "judge asked now": 0,
+        "judge asked then": 339,
+        "requests": 384
+      },
+      "other": {
+        "judge asked now": 33,
+        "judge asked then": 50,
+        "requests": 434
+      }
+    },
+    "banking guard-auto-hybrid-mini-follow-warnings": {
+      "attacker": {
+        "judge asked now": 0,
+        "judge asked then": 336,
+        "requests": 378
+      },
+      "other": {
+        "judge asked now": 32,
+        "judge asked then": 45,
+        "requests": 446
+      }
+    }
+  },
+  "changed": [],
+  "needs_judge": []
+}

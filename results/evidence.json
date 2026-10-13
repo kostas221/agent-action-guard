@@ -1,19 +1,37 @@
 {
- "built": "2026-10-12",
+ "built": "2026-10-13",
  "benchmark": "v1.2.2",
  "scoring": {
-  "identity": "a8700a1c36e8",
+  "identity": "46aa42deeac1",
   "agentdojo": "0.1.35",
   "files": {
    "action_guard/attacks.py": "488f5119b5bbd5674321ceea49ed01630d16681e4a880be8563906f8e555b023",
    "action_guard/guard_metrics.py": "b5d34c3b793acec2e89ff410fb004a77f100c5efb160ee908d970db92a91545d",
    "action_guard/labels.py": "0cecddf6bc540a51c96af235b5ad6e7553600bf04a9eec4e4c79a1aac9cb167c",
-   "action_guard/metrics.py": "047c0b52f20292d6ff15756cb54782cf53c9c7dae47768dfeba5ed92f68f5a2d",
+   "action_guard/metrics.py": "406ea586384b5dabdd8a5763362428423d78d8ed930c11fdcb00984762526dd6",
+   "barriers.py": "4a20daf8ff6a2649c569d2e456b0dcf178ab5cdfc1205e435adfdbac3ca6994f",
    "bootstrap.py": "9b38a365faf68df424aa5a35c441af1b4e4ac1898982eca4c2f36d78899a4e11",
+   "bounds.py": "cc39e12f3726bc4b787fc44bf02d5257241c33bb50e8ca13d09118be3fb4f6ae",
    "compare.py": "ef3a7fe0bdea5bb8bc8df2551b59645824de4206d1858c4eb01052c4d3c71014",
    "report.py": "f426a3f146509a3bbaf82119adc08cb8883a59c7a1145bf017e402afbdb44497"
   }
  },
+ "scoring_history": [
+  {
+   "identity": "a8700a1c36e8",
+   "agentdojo": "0.1.35",
+   "files": {
+    "action_guard/attacks.py": "488f5119b5bbd5674321ceea49ed01630d16681e4a880be8563906f8e555b023",
+    "action_guard/guard_metrics.py": "b5d34c3b793acec2e89ff410fb004a77f100c5efb160ee908d970db92a91545d",
+    "action_guard/labels.py": "0cecddf6bc540a51c96af235b5ad6e7553600bf04a9eec4e4c79a1aac9cb167c",
+    "action_guard/metrics.py": "047c0b52f20292d6ff15756cb54782cf53c9c7dae47768dfeba5ed92f68f5a2d",
+    "bootstrap.py": "9b38a365faf68df424aa5a35c441af1b4e4ac1898982eca4c2f36d78899a4e11",
+    "compare.py": "ef3a7fe0bdea5bb8bc8df2551b59645824de4206d1858c4eb01052c4d3c71014",
+    "report.py": "f426a3f146509a3bbaf82119adc08cb8883a59c7a1145bf017e402afbdb44497"
+   },
+   "until": "2026-10-13"
+  }
+ ],
  "experiments": [
   {
    "runs_dir": "runs",
@@ -621,9 +639,91 @@
   {
    "runs_dir": "runs-v0.4",
    "attack": "important_instructions",
-   "status": "planned",
+   "status": "published",
    "what": "0.4: automatic policy on banking",
-   "cells": []
+   "cells": [
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "39699bdc7961dfb9efbc9590edd16a3d5f5826eb7fadcb89ba3c30b6a5cf4a77"
+    },
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "47c6e9a9fe6ada58344175890c21253d5219f6a469e05e0afbd8e0dfff54ebe4"
+    },
+    {
+     "config": "guard-auto-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "6aa90138aac13bc8139bb5e9ebf0ac5f98e9411aa390110c7017fccd58e3fdcd"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "5e69f211dfa93f1114c354debaee58b75f5fac0aa122e27afedb9db12a05b6b2"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "7e58c154b08d555204a6a85dec0bb2611d907f30c59f474047c7ab3acc439dd0"
+    },
+    {
+     "config": "guard-auto-hybrid-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "4e681608041a8a71662cb72ef3217c02657ee0d240ba18355f4ae15c63f533c5"
+    },
+    {
+     "config": "guard-auto-hybrid-mini-follow-warnings",
+     "rep": "rep1",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "8304e8443d5e5ed09a0631fbc275530308279246504e24bf1e98d2d09d6ebfc6"
+    },
+    {
+     "config": "guard-auto-hybrid-mini-follow-warnings",
+     "rep": "rep2",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "e6f8e421f2b36e894f6ca7b2cbe5fee3f783b47a60a715ab1478c9ecec07246d"
+    },
+    {
+     "config": "guard-auto-hybrid-mini-follow-warnings",
+     "rep": "rep3",
+     "suite": "banking",
+     "traces": 169,
+     "complete": true,
+     "execution": "d7577ad483c6",
+     "digest": "f726b353f5c36c021a9e6fb196cb5692260812818aa0e659f2dac364c7cbded8"
+    }
+   ]
   }
  ],
  "results": {
@@ -653,12 +753,16 @@
   "results/v0.2.0/comparison.json": "7eb5fb04b2cf77248759f5db39b99c5f734ac9838f5a3dbfcbb868ec3d38eb65",
   "results/v0.2.0/guard-follow-warnings.json": "4497d2ac71bf6875e228230043056f36f2bee40a43e3d68075ece8092073e9b0",
   "results/v0.2.0/guard-hybrid-follow-warnings.json": "f611e73d5a417ffa97f71f6ea237d29e50ee9f2d63414ac0448a7322d595d96d",
+  "results/v0.3/barriers-slack.json": "62710c5c597f927c66523ddc8b5f6c65e30062ff177008175423c4aad81ea976",
   "results/v0.3/bootstrap.json": "0dd890af77d0cac8774160a7f6e50f4ba39bfbbf9b9de8bdc499761c5f993369",
+  "results/v0.3/bounds-slack.json": "657059c65e12e302f88abe6ed8e1db419f5b36bb5b84d4c59185934ba112a506",
   "results/v0.3/comparison-slack.json": "36d43784bac75274f67ea7439d397f8cdda781e3ff8f7e0f7fec2f0b8fd6d023",
   "results/v0.3/guard-auto-follow-warnings.json": "6d84a4b4c1403863dd9e544d45d9380b5db449e1294ec6f797580f6458bb700c",
   "results/v0.3/guard-auto-hybrid-follow-warnings.json": "1bbada365dccff111f2f8bcceec741ee290f435ca8e4e4468845c92bf4652e82",
+  "results/v0.3-banking/barriers.json": "e20db828761285b6a529e587870bb8e1475930c933eff8c3d1683cd533535a78",
   "results/v0.3-banking/bootstrap-vs-defense-tool_filter.json": "a0245874c1d40ac21c8b38cf6a47b67c9686cf7d7b31c2dcec93c6b2d7f358e2",
   "results/v0.3-banking/bootstrap.json": "3b2b0b786b71f566370e284655c42d8b22a78fe7588af28e589515ad0b513033",
+  "results/v0.3-banking/bounds.json": "ca7fd2cc580d71fbe9626785e1941ce1efbb39d3a74a048631168a7b7b977e95",
   "results/v0.3-banking/comparison.json": "f98792211bccb135bb435f1d611efc17a8f9673f4372ff1fdb04fd0eb36cb114",
   "results/v0.3-banking/defense-repeat_user_prompt.json": "5854ec068233380f3dc0573eb704d3649b22efc497762c93f68a6381024e5db1",
   "results/v0.3-banking/defense-spotlighting_with_delimiting.json": "570c2799021b1c2bd4616eb33d74858144adbf846fdddc96dae1bad88e8b65a4",
@@ -668,13 +772,24 @@
   "results/v0.3-banking/guard-auto-hybrid-mini-follow-warnings.json": "a3a08ccfd6831024c657924c7bba376c67789779b15c12328568f33875462697",
   "results/v0.3-tool-knowledge/baseline.json": "599d9087e75fc5ecbdeeb1b2a1b4138007d8e0df4bab614263078fa784b853d6",
   "results/v0.3-tool-knowledge/bootstrap.json": "2b4a50af0f4844c86b4bc15a718ee26e565cece33a7ce774a0a566b6a6fec0b2",
+  "results/v0.3-tool-knowledge/bounds-tool_knowledge.json": "709353855c0fb96df6cf53e687c42c8188cb87e9adb4ec427e13318fe2b84397",
   "results/v0.3-tool-knowledge/comparison.json": "004d88939ccfe62b503066c6ac15b8d136e179f686f232e2cee4ddcb3dc8e6e4",
   "results/v0.3-tool-knowledge/guard-auto-follow-warnings.json": "26f97abb91a83ede6e484957a62869e06fb544b4dabb9ac04330eba4ef241d9e",
   "results/v0.3-tool-knowledge/guard-auto-hybrid-follow-warnings.json": "a4c1c77aba9cd8aab16f6ad79f9d17a5bf553e9ae0681d702fc6a924451a9813",
   "results/v0.3-tool-knowledge/guard-auto-hybrid-mini-follow-warnings.json": "85821efb6b81ec1ab94ce30344ba9c95c5f0f9daece9a3a70a66982db23d28a7",
+  "results/v0.4/barriers.json": "c26b69a9b98acf00247d4e131a5f4d91db20a0ead91cef10a64104d527ffa9a4",
+  "results/v0.4/bootstrap.json": "b430388ae308d3f53dabf13364384ace1c06449a8f42200ee361963f553c77fe",
+  "results/v0.4/bounds.json": "8fc60d4665d4bbcd768ae4e81550faab9e1fb4eb1f618af97dc0d389fd198b7a",
+  "results/v0.4/comparison.json": "eb06323ba0e6a05fd3ed22071daf2c69f4363f822c7f42941e7c22fd09cc9224",
   "results/v0.4/failure-matrix.json": "abc9f298e4a55b0af0c8f434c61867c5f83ba54e88412db8649dee3ab16b8d98",
   "results/v0.4/fixes-replay.json": "984f9701de31979a4e4c3de456e7651f57b1532e366672a7afb7058e595c5780",
+  "results/v0.4/guard-auto-follow-warnings.json": "0be0e41216b510aad37e28f673d64c24ad9a8f498abb670a79b2bdcf21b9f5d4",
+  "results/v0.4/guard-auto-hybrid-follow-warnings.json": "f9906cf58ccd6cd65c3cc6c8e843fcb98f54a83fc2531396cfe340d862b68d2b",
+  "results/v0.4/guard-auto-hybrid-mini-follow-warnings.json": "2e0cbcabc339600f0bb9afbdf4f797e5155991d4bf3084c5327d3677f409430a",
   "results/v0.4/links-judge-pilot.json": "b014fecd44dfd6e583ba451e55941880ecf47e0353b3e07b0feb80ba7d5f4743",
-  "results/v0.4/plan-pilot.json": "9769cb3a31f0a5553155797052c3fa4aefc8ce1bcff3c7819a49e5eb89d6a372"
+  "results/v0.4/plan-pilot.json": "9769cb3a31f0a5553155797052c3fa4aefc8ce1bcff3c7819a49e5eb89d6a372",
+  "results/v0.5/failure-matrix.json": "77f46f89322622dea04fe68cc585bc1225103f9d4dc90b945254af8fc1372ad8",
+  "results/v0.5/replay-runs-v0.3.json": "e2409cdb56e16479bacac45fa7672f6ae7322802d7f0fa7ff18986a7461ecc28",
+  "results/v0.5/replay-runs-v0.4.json": "6657a6c5039a59054c18346f63baffd80787913207739e0f5b612db9086e86e0"
  }
 }
